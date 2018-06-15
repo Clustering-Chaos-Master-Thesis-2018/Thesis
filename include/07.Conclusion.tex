@@ -1,0 +1,23 @@
+\chapter{Conclusion}
+\label{chap:conclusion}
+
+In this thesis we introduced clustering to the \atwo{} protocol. The clustering algorithm is based on the HEED algorithm and uses a nodes residual energy to weigh its probability to announce itself as cluster head. We implemented clustering as a service in the \atwo{} Synchrotron, and evaluated our implementation in the Cooja simulator and on the Flocklab testbed looking at the metrics, reliability, latency, and energy consumption. Our results show that, on average, our clustering implementation performs significantly worse than \atwo{} when measuring the reliability. The energy consumption is similar and, for some tests, we achieve a lower latency than \atwo{}.
+
+
+
+\section{Future Work}
+\label{sec:future-work}
+In this section, we list and discuss possible focuses of future work.
+
+
+\subsection{Sleep Schemes}
+Since forwarders do not contribute to the completion of the protocol, i.e., they do not set contribution flags. Sleep schemes are applicable to our clustering implementation since we showed in \cref{chap:evaluation} that using clustering does not increase the energy usage of the node in the network. Therefore, applying sleep schemes will directly improve energy preservation proportionally to the percentage of nodes put to sleep; this, however, could be in exchange for reliability. Sleep schemes are very applicable when using clustering and further work can research which nodes can be put to sleep, and how to determine which are crucial for keeping a network connected.
+
+\subsection{Transmission Power}
+In this thesis, all nodes have always used the same transmission power. It is conceivable to use a stronger transmission power for CHs that scales with competition radius, enabling all non CHs to sleep during CH rounds. If the few elected CHs use more power all other nodes, currently acting as forwarders, can all sleep and save energy. However, it would put a high requirement on dynamic clustering since CHs would need to be able to demote themselves. 
+
+
+\subsection{Evaluating Stability}
+In our evaluation we redefined the reliability metric slightly compared to Landsiedel et al.~\cite{chaos-introduction-paper}. We only consider reliability for the max application, and count other applications as an automatic failure, if they are run when not expected. In future evaluations, we could define reliability like Landsiedel et al.~does, the number of rounds in which the network reaches completion regardless of which application is running. Furthermore, we could also introduce a new metric called stability.
+
+Stability could be a metric for how often a node requires resynchronisation. The measurement would describe, in the case of \atwo{}, how connected the network is; and in the case of clustering, how many times nodes switch between clusters. Comparing the stability metric between between these two could provide a better picture of the overall effectiveness of clustering a network.

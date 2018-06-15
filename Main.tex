@@ -1,0 +1,134 @@
+% CREATED BY DAVID FRISK, 2016
+
+% IMPORT SETTINGS
+\documentclass[12pt,a4paper,twoside,openright]{report}
+\input{include/settings/Settings}
+
+\begin{document} 
+
+\newcommand{\headline}{Bringing Order to CHAOS}
+\newcommand{\subtitle}{Clustering in Wireless Sensor Networks}
+\newcommand{\department}{Computer Science and Engineering}
+\newcommand{\firstauthor}{Mattias Nilsen}
+\newcommand{\secondauthor}{André Samuelsson}
+\newcommand{\authors}{\firstauthor\\\secondauthor}
+%\newcommand{\atwo}{$A^2$}
+\def\atwo#{\texorpdfstring{$A^2$}{A2}}
+
+% COVER PAGE, TITLE PAGE AND IMPRINT PAGE
+\pagenumbering{roman}			% Roman numbering (starting with i (one)) until first main chapter
+\input{include/frontmatter/Titlepage}
+
+% ABSTRACT
+\newpage
+\input{include/frontmatter/Abstract}
+
+% ACKNOWLEDGEMENTS
+\newpage
+\input{include/frontmatter/Acknowledgements}
+
+
+% TABLE OF CONTENTS
+\newpage
+%\Addlcwords{is for an of in the}
+\tableofcontents
+\iffalse
+%CAPS FOR CHAPTER HEADERS
+\renewcommand{\chapter}[2][\relax]{%
+    \ifx\relax#1%
+    %\texorpdfstring FIXES LATEX WARNING. PROBLEM: PDF BOOKMARKS ARE NOT CAPITALIZED
+    \svchapter{\texorpdfstring{\titlecap{#2}}{#2}}%
+    \else%
+    \svchapter[\texorpdfstring{\titlecap{#1}}{#1}]{\texorpdfstring{\titlecap{#2}}{#2}}%
+    \fi%
+}
+
+%CAPS FOR SECTION HEADERS
+\renewcommand{\section}[2][\relax]{%
+    \ifx\relax#1%
+    \svsection{\texorpdfstring{\titlecap{#2}}{#2}}%
+    \else%
+    \svsection[\texorpdfstring{\titlecap{#1}}{#1}]{\texorpdfstring{\titlecap{#2}}{#2}}%
+    \fi%
+}   
+\renewcommand{\subsection}[2][\relax]{%
+    \ifx\relax#1%
+    \svsubsection{\texorpdfstring{\titlecap{#2}}{#2}}%
+    \else%
+    \svsubsection[\texorpdfstring{\titlecap{#1}}{#1}]{\texorpdfstring{\titlecap{#2}}{#2}}%
+    \fi%
+}   
+\renewcommand{\subsubsection}[2][\relax]{%
+    \ifx\relax#1%
+    \svsubsubsection{\texorpdfstring{\titlecap{#2}}{#2}}%
+    \else%
+    \svsubsubsection[\texorpdfstring{\titlecap{#1}}{#1}]{\texorpdfstring{\titlecap{#2}}{#2}}%
+    \fi%
+} 
+\fi
+\makeatletter
+\xpatchcmd{\paragraph}{3.25ex \@plus1ex \@minus.2ex}{3pt plus 1pt minus 1pt}{\typeout{success!}}{\typeout{failure!}}
+\makeatother
+
+% OTHER FRONTMATTER
+% List of figures (add to table of contents)
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{chapter}{\listfigurename} 
+\listoffigures
+% List of tables (add to table of contents)
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{chapter}{\listtablename}  
+\listoftables
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{chapter}{\listalgorithmname}
+\listofalgorithms
+
+
+% START OF MAIN DOCUMENT
+\cleardoublepage
+\setcounter{page}{1}
+\pagenumbering{arabic}			% Arabic numbering starting from 1 (one)
+\setlength{\parskip}{8 pt plus 1pt}
+
+% INTRODUCTION
+\input{include/01.Introduction}
+
+% THEORY
+\input{include/02.Background}
+
+\input{include/03.RelatedResearch}
+
+% METHODS
+\input{include/04.Design}
+
+\input{include/05.Implementation}
+
+% RESULTS
+\input{include/06.Evaluation}
+
+% CONCLUSION
+\input{include/07.Conclusion}
+
+\iffalse
+%RE-SET CHAPTER COMMAND. OTHERWISE BIBLIOGRAPHY WILL BREAK.
+\renewcommand{\chapter}{\svchapter}
+\fi
+
+% REFERENCES / BIBLIOGRAPHY
+\cleardoublepage
+\addcontentsline{toc}{chapter}{Bibliography}
+\input{include/backmatter/References}
+
+% APPENDICES
+\cleardoublepage
+\appendix
+\setcounter{page}{1}
+\pagenumbering{Roman}			% Capitalized roman numbering starting from I (one)
+
+\input{include/backmatter/Appendix_1}
+
+
+\end{document}

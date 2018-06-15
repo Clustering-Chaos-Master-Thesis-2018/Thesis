@@ -1,0 +1,58 @@
+\headline\\
+\subtitle\\
+\authors\\
+Department of \department\\
+Chalmers University of Technology and University of Gothenburg\setlength{\parskip}{0.5cm}
+
+\thispagestyle{plain}			% Supress header 
+\setlength{\parskip}{0pt plus 1.0pt}
+\section*{Abstract}
+
+\iffalse
+
+aims, scope, and conclusions.
+There is no space for unnecessary text; an abstract should be kept to as few words as possible while remaining clear and informative.
+Irrelevancies, such as minor details or a description of the structure of the paper, are usually inappropriate, as are acronyms, mathematics, abbreviations, or citations.
+Only in rare circumstances should an abstract cite another paper (for example, when one paper consists entirely
+of analysis of results in another), in which case the reference should be given in full, not as a citation to the bibliography.
+
+aims:
+Increase communication efficiency. Scale for more number of nodes in the network.
+
+scope:
+While not constructing new clustering algorithms we aim to use existing ones with implementation specific modifications.
+
+
+conclusions:
+haven't we done well?
+
+
+Write something about the relevancy of wireless sensor networks
+Describe existing solutions in half a sentence maybe
+introduce CHAOS as a new thing which is revolutionary
+Talk about clustering and maybe what it is
+Put chaos and clustering together and we get a completely novel thing
+
+
+What is clustering/Clustering is relevant somehow?
+What is CHAOS/A2?
+\fi
+
+Wireless Sensor Networks are becoming more and more popular today with the decrease in cost to manufacture sensor nodes and the increased popularity of cyber-physical systems. One of the most significant problems affecting Wireless Sensor Networks is the energy consumption of the nodes. The nodes battery capacity is often limited, and they are expected to work without human intervention for several years at a time. Another challenge for Wireless Sensor Networks is scaling. However, making the network scale better often impacts the energy consumption negatively; it is not always clear which issue to prioritise. Clustering is a widely used technique to increase scalability and decrease energy consumption. In this thesis, we aim to apply clustering on top of the \atwo{} protocol. Our starting point, \atwo{}, is an already implemented mesh protocol running on top of ContikiOS. Our work consists of designing and implementing a clustering scheme, based on the HEED clustering algorithm, to partition the network and create a hierarchical communication medium. We evaluate our work in the Cooja simulator and on the Flocklab testbed, and compare it to the original implementation of \atwo{} using the metrics reliability, latency, and energy usage. Our evaluation show that our clustering implementation performs worse than the \atwo{} protocol regarding reliability. However, we achieve better latency and slightly better energy usage than the \atwo{} protocol.
+
+%We push the network lifetime by implementing dynamic selection of cluster heads with load balancing. By using the same testbeds as the original implementation, the new approach is easy to evaluate and compare to the original.
+
+\iffalse
+Later:
+Results and outcome from the thesis.
+E.g.
+We've pushed the theoretical bound of the number of participating nodes by order of a magnitude larger. Network lifetime has seen an increase by 10%. 
+\fi
+
+% KEYWORDS (MAXIMUM 10 WORDS)
+\vfill
+Keywords: Wireless Sensor Networks, Low Energy, Clustering, CHAOS, Capture Effect, Synchrotron
+
+\newpage				% Create empty back of side
+\thispagestyle{empty}
+\mbox{}

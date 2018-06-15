@@ -1,0 +1,106 @@
+% CREATED BY DAVID FRISK, 2016
+% MODIFIED BY JAKOB JARMAR, 2016
+% A few changes by Birgit Grohe, 2017
+
+% COVER PAGE
+\begin{titlepage}
+\newgeometry{top=3cm, bottom=3cm,
+			left=2.25 cm, right=2.25cm}	% Temporarily change margins		
+			
+% Cover page background 
+\AddToShipoutPicture*{\backgroundpic{-4}{56.7}{figure/auxiliary/frontpage_gu_eng.pdf}}
+\addtolength{\voffset}{2cm}
+
+% Cover picture (replace with your own or delete)
+\begin{figure}[H]
+\centering
+\vspace{1cm}	% Adjust vertical spacing here
+\includegraphics[width=0.7\linewidth]{figure/auxiliary/Frontpage-200-run1-1300x1300.pdf}
+\end{figure}
+
+% Cover text
+\mbox{}
+\vfill
+\renewcommand{\familydefault}{\sfdefault} \normalfont % Set cover page font
+\textbf{{\Huge 	\headline 	\\[0.2cm] 
+				}} 	\\[0.5cm]
+{\Large \subtitle}\\[0.5cm]
+Master's thesis in Computer Systems and Networks \setlength{\parskip}{1cm}
+
+{\Large \firstauthor} \setlength{\parskip}{2.9cm}\\
+{\Large \secondauthor} \setlength{\parskip}{2.9cm}
+
+Department of Computer Science and Engineering \\
+\textsc{Chalmers University of Technology} \\
+\textsc{University of Gothenburg} \\
+Gothenburg, Sweden 2018
+
+\renewcommand{\familydefault}{\rmdefault} \normalfont % Reset standard font
+\end{titlepage}
+
+
+% BACK OF COVER PAGE (BLANK PAGE)
+\newpage
+\restoregeometry
+\thispagestyle{empty}
+\mbox{}
+
+
+
+% TITLE PAGE
+\newpage
+\thispagestyle{empty}
+\begin{center}
+	\textsc{\large Master's thesis 2018}\\[4cm]		% Report number is currently not in use
+	\textbf{\Large \headline} \\[1cm]
+	{\large \subtitle}\\[1cm]
+	{\large \authors}
+	
+	\vfill	
+	% Logotype on titlepage	
+	\begin{figure}[H]
+	\centering
+	% Remove the following line to remove the titlepage logotype
+	\includegraphics[width=0.4\pdfpagewidth]{figure/auxiliary/logo_ch_gu.pdf}
+	%\includegraphics[width=0.2\pdfpagewidth]{figure/auxiliary/logo_eng.pdf}
+	\end{figure}	\vspace{5mm}	
+	
+	Department of \department\\
+	%\emph{Division of Division name}\\
+	%Name of research group (if applicable)\\
+	\textsc{Chalmers University of Technology} \\
+	\textsc{University of Gothenburg} \\
+	Gothenburg, Sweden 2018 \\
+\end{center}
+
+
+% IMPRINT PAGE (BACK OF TITLE PAGE)
+\newpage
+\thispagestyle{plain}
+\vspace*{4.5cm}
+\headline \\
+\subtitle\\
+\authors \setlength{\parskip}{1cm}
+
+\copyright ~ \firstauthor, 2018. \setlength{\parskip}{1cm}\\
+\copyright ~ \secondauthor, 2018. \setlength{\parskip}{1cm}
+
+Supervisor: Olaf Landsiedel, \department\\
+Examiner: Marina Papatriantafilou, \department \setlength{\parskip}{1cm}
+
+Master's Thesis 2018\\	% Report number currently not in use 
+Department of \department\\
+%Division of Division name\\
+%Name of research group (if applicable)\\
+Chalmers University of Technology and University of Gothenburg\\
+SE-412 96 Gothenburg\\
+Telephone +46 31 772 1000 \setlength{\parskip}{0.5cm}
+
+\vfill
+% Caption for cover page figure if used, possibly with reference to further information in the report
+Cover: An example of a clustering of a network with 200 nodes. \setlength{\parskip}{0.5cm}
+
+Typeset in \LaTeX \\
+%Printed by [Name of printing company]\\
+Gothenburg, Sweden 2018
+
