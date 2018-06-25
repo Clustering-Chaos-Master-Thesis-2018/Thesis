@@ -37,7 +37,7 @@ Since the HEED algorithm aims to assign non-overlapping cluster-heads, the commu
 A more general implementation is possible since forwarders do not propose any new information by themselves they only require the knowledge of how to merge two packets for an application. We did, however, not implement such a solution since the \atwo{} model does not let the applications provide an operator for combining two payloads. If applications would provide that merge operation through an interface, then a more general implementation in \atwo{} could use the current running applications knowledge of how to merge packets without actually running the application. 
 
 
-\subsection{flags field for Cluster Heads}
+\subsection{Flags Field for Cluster Heads}
 To separate CH rounds from cluster rounds, the nodes switch back and forth between intra- and inter-cluster communication every other round. However, during the join service, no CH rounds are executed. The reason for this is that while the join service's purpose is to build the flags field used for completion during communication within the clusters, the CH has their join process during the cluster service. Therefore, the CH already knows how they perform completion when the join service starts. More specifically, during the clustering service, the CHs builds a list of all CHs. Each CH then uses the index of their entry in this list as their index in the flags field. This both ensures that the CHs has sequential indexing of the flags field, and also know the length of the flags field. During CH rounds the CHs still use the same procedure as during cluster rounds; however, their index in the flags field corresponds to their index in the CH list built during the clustering service.
 
 \subsection{The Initiator}
