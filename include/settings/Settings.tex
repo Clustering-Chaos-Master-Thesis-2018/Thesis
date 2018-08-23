@@ -10,6 +10,27 @@
 \let\svsubsubsection\subsubsection
 \fi
 
+%colored boxes for definitions
+\usepackage[most]{tcolorbox}
+\newtcbtheorem[no counter]{Definitions}{Definition}%
+{
+enhanced,
+  sharp corners,
+  attach boxed title to top left={
+    yshifttext=-1mm
+  },
+  colback=white,
+  colframe=blue!25,
+  fonttitle=\bfseries,
+  coltitle=black,
+  boxed title style={
+    sharp corners,
+    size=small,
+    colback=blue!25,
+    colframe=blue!25,
+  } 
+}{}
+
 \usepackage{moreverb}								% List settings
 \usepackage{textcomp}								% Fonts, symbols etc.
 \usepackage{lmodern}								% Latin modern font
@@ -57,9 +78,10 @@
 
 \definecolor{newtextcolor}{HTML}{AC3B3B}
 \definecolor{improvetextcolor}{HTML}{3F3FB7}
+\definecolor{newnewtextcolor}{HTML}{0000AA}
 
-
-\newenvironment{newtext}[1]
+\iffalse
+\newenvironment{newtext}[1][New text]
 {%
     \def\FrameCommand
     {%
@@ -78,7 +100,10 @@
     \MakeFramed{\hsize\hsize\advance\hsize-\width\FrameRestore}%
 }
 {\endMakeFramed}
-
+\fi
+%\newenvironment{newtext}{\color{newnewtextcolor}}{\ignorespacesafterend}
+%Comment above live and uncomment this line to remove new text.
+\newenvironment*{newtext}[1][New text]{}{}
 
 \newenvironment{improvetext}[1]
 {%

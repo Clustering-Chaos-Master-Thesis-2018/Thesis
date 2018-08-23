@@ -1,55 +1,83 @@
 \chapter{Evaluation}
 \label{chap:evaluation}
-In this chapter, we evaluate how the chosen parameters affect our clustering protocol with different network topologies, and how our clustering compares with the original \atwo{} protocol. First, we describe our evaluation setup. Second, we present our evaluation of the clustering algorithm's parameters. Third, we present and discuss our evaluation of clustering implemented on \atwo{} and compare it to the original implementation of \atwo{}. Finally, we end this chapter with a discussion on the effectiveness of our clustering implementation.
-
-\section{Test Setup}
-To test our clustering implementation, we run an unmodified version of the \atwo{} protocol and compare it to our clustering implementation. In this section, we describe our test setup, which topologies we test on, and which metrics we use to measure our results. 
+In this chapter, we evaluate our clustering implementation. We begin by defining the topologies and the metrics we use. We continue with an evaluation of our clustering parameters, where we determine what configurations of the parameters yield the most reliable and stable network, for different topologies. Next, we compare our clustering implementation to the \atwo{} system. We end this chapter with a discussion on the evaluation results, how our limitation on fault tolerance affected our results, and running different applications in a clustered network.
 
 
-\subsection{Test Environments}
-We evaluate our clustering implementation in two different ways, on the Cooja simulator \cite{Osterlind2006-cooja-introduction} and the Flocklab testbed \cite{Lim2013-flocklab-introduction}. Cooja is the default simulator for ContikiOS \cite{Dunkels2004-contiki-introduction}, the operating system that the Chaos and \atwo{} protocols are implemented on \cite{chaos-introduction-paper, a2-introduction-paper}.
+\section{Evaluation Setup}
+We run several different tests to evaluate our clustering implementation. In this section, we describe our test setup, the network topologies we run our tests on, and the metrics we use. 
 
-\subsection{Topology Details}
-\label{subsec:evaluation-topology-details}
-In Cooja, we create network topologies with 50 nodes placed randomly in different areas, creating different node densities. We start with 50 nodes in a 100x100 $m^2$ area and increase the side of the square in steps of 300 meters all the way to 2500x2500 $m^2$. All network topologies are fixed, they do not change between tests. In all tests, we simulate each network for 30 minutes, which gives us approximately 600 rounds of data. We run our tests using 50 nodes for two reasons. First, 50 nodes are enough to see that the clustering service creates several clusters. Second, running these simulations takes a significant amount of time, and it does not scale well when increasing the number of nodes. Currently, simulating 30 minutes with these 50 and 200 node topologies takes between 2-3 hours and 30-50 hours respectively. Moreover, we chose the different areas of deployment from the fact that in Cooja, a network with area 100x100 meters ensures a 1-hop network and at 2500x2500 meters the network is sparse enough for clustering to be disadvantageous.
+\subsection{The Cooja Simulator}
+\label{subsec:cooja-setup}
+Cooja \cite{Osterlind2006-cooja-introduction} is a simulator for ContikiOS \cite{Dunkels2004-contiki-introduction}, the operating system that Chaos and \atwo{} are implemented on \cite{chaos-introduction-paper, a2-introduction-paper}. In Cooja, we create networks with 50 and 200 nodes placed randomly in topologies of different sizes, to get both dense and sparse networks. We start with 50 nodes in a 100x100 $m^2$ area and increase the side of the square in steps of 300 meters up to 2500x2500 $m^2$. We do the same for 200 nodes but only up to 1300x1300 $m^2$. We only have one network topology per area and number of nodes. We simulate each test for 30 minutes, which gives us 600 rounds of data. 
 
-The Flocklab testbed consists of 27 nodes deployed both indoors and outdoors at ETH Zurich University. Flocklab provides several services such as \textit{general purpose input output} (GPIO) pin tracing, power profiling, and adjustable supply voltage \cite{Lim2013-flocklab-introduction} to make it easy to measure and evaluate the code that is running on the nodes. Our tests log data to the serial output port of an observer node, Flocklab aggregates the data and sends it to us at the end of each test.
+We run most of our tests using 50 nodes for two reasons. First, 50 nodes are enough to see that the Clustering service creates several clusters. Second, running these simulations takes a significant amount of time, and it does not scale well when increasing the number of nodes. Simulating 30 minutes with 50 nodes takes 2-3 hours, and 200 nodes takes 30-50 hours on our hardware. However, when comparing our clustering process to the \atwo{} system, we also simulate 200 nodes to see the effects of scaling up the network. Moreover, we chose the different sizes from the fact that in Cooja, a network with an area of 100x100 $m^2$ ensures that is is a 1-hop network and at 2500x2500 $m^2$ the network is at least a 7-hop network.
+
+\subsection{The Flocklab Testbed}
+The Flocklab testbed \cite{Lim2013-flocklab-introduction} consists of 27 nodes deployed both indoors and outdoors at ETH Zurich. Flocklab provides several services that make it easy to measure and evaluate the code that is running on the nodes. Our tests log data to the serial port of an observer node, Flocklab aggregates the data and sends it to us at the end of each test. 
+
 
 \subsection{Metrics}
-We consider the following metrics when evaluating clustering on \atwo{}.
+\begin{newtext}
+To define the metrics we use, we make a distinction between rounds which execute coordination and rounds which execute applications. Coordination is rounds in which the network is set up to enable applications to run; coordination includes the Cluster, Join, and Demote services. We also differentiate between static and dynamic coordination. Static coordination is scheduled at fixed round intervals to, for example, cluster the network. Dynamic coordination, on the other hand, is scheduled by nodes as needed during the application phase, to handle faults in the network or new nodes. Applications are programs that run with the goal of providing some value or perform some calculation; Some examples of applications are finding the maximum or mean of all values proposed by nodes in the network, or performing a two-phase commit.
 
-\begin{itemize}
-    \item \textit{Latency:} The number of slots it takes for the nodes to complete the current application and power down.
-    \item \textit{Energy usage:} An estimation of the energy every node uses per round.
-    \item \textit{Reliability:} The percentage of rounds all nodes successfully run the application to completion.
-\end{itemize}
+We consider four metrics when evaluating clustering on \atwo{}: stability, reliability, latency, and energy usage. We define the metrics for one execution of a network, that is, one simulation in Cooja or one run on the Flocklab testbed.
 
-We measure latency as the number of slots it takes before all nodes have completed the current application and power down.
 
-We measure the energy consumption of every node using the built-in energy estimation module Energest in Contiki. The energy measurement includes the total energy consumed by the CPU and radio. We then calculate the average energy consumed over all nodes per Energest time unit, which is approximately 1/128 of a second. Only estimating energy usage in software is a limitation to our testing, but it is adequate for making comparisons.
+\paragraph*{Stability} is a measurement of how often topology changes occur. We say that a node is stable if it is executing an application and unstable if it is executing dynamic coordination. Stability during one round is the proportion of nodes that are stable. We give the following definition for the stability for one test. 
 
-We measure reliability as the number of rounds all nodes receive the correct final value divided by the total number of rounds the max protocol is supposed to be running; that is, we remove the rounds which the nodes spend running the clustering, demote, and join services. During cluster rounds, we count the round as a success if all nodes in every cluster have learned their local maximum. During CH rounds we count the round as a success if all CHs have learned the maximum global value.
 
-These metrics are adopted from the work of Landsiedel et al.~and Al Nahas et al.~ on the original Chaos and \atwo{} protocols \cite{chaos-introduction-paper, a2-introduction-paper}. However, we have modified the reliability metric. Previous work defines reliability as the percentage of rounds in which all nodes reach completion, including the join service. We, on the other and, count reliability as the rounds in which the max application executed when it is expected to execute. That means a dynamically scheduled join round has a negative impact on reliability.
+\begin{Definitions}{}{}
+Let $s_i$ be the set of stable nodes in round $i$, $n$ the set of all nodes, and $R$ the set of all rounds which do not execute static coordination.
+
+\begin{equation*}
+    Stability = \frac{\sum\limits_{i \in R}{|s_i|}}{|n|*|R|}
+\end{equation*}
+
+\end{Definitions}
+
+\paragraph*{Reliability} is a measurement of how well an application runs on the network; thus, it is only measured during application rounds. Reliability during one round is the proportion of stable nodes that successfully execute an application. We give the following definition for the reliability for one test.
+
+\begin{Definitions}{}{}
+Let $a_i$, $a_i \subset s_i$, be the set of stable nodes that succeeds with an application in round $i$, and $R_a$ the set of all rounds in which an application is executed.
+
+
+\begin{equation*}
+    Reliability = \frac{\sum\limits_{i \in R_a}{|a_i|}}{\sum\limits_{i \in R_a}{|s_i|}}
+\end{equation*}
+
+\end{Definitions}
+
+
+\paragraph*{Latency} is a measurement of how long it takes for an application to terminate. For a stable node in one round, latency is the number of slots from the start of the round until the node powers down. We give the following definition for the latency for one test.
+
+\begin{Definitions}{}{}
+Let $l_{ij}$ be the latency for node $j$ in round $i$.
+
+\begin{equation*}
+    Latency = \frac{\sum\limits_{i \in R_a}{ \sum\limits_{j \in s_i}{l_{ij} } }}{\sum\limits_{i \in R_a}|s_i|}
+\end{equation*}
+\end{Definitions}
+
+
+\paragraph*{Energy usage} is a measurement of the average amount of energy used by a node per Energest time unit. Energest is the built-in energy estimation module in Contiki and we measure energy usage in all rounds, both during coordination and applications. We give the following definition for the energy usage for one test.
+
+
+\begin{Definitions}{}{}
+Let $e_{i}$ be the energy used by node $i$ in one test, and let $T$ be the running time of the test in Energest time units.
+
+\begin{equation*}
+    Energy\ usage = \frac{\sum\limits_{i \in n}{e_{i}}}{T*n}
+\end{equation*}
+\end{Definitions}
+
+\end{newtext}
 
 \subsection{Limitations}
-We limit our evaluation in the following ways. We only compare our clustering implementation to the \atwo{} protocol. Furthermore, we limit the testing to Cooja simulations and tests run on the Flocklab testbed. We believe that the Cooja simulations provide valuable results since we gain freedom in choosing topologies. In contrast, the Flocklab testbed is a WSN with real nodes, but the number of nodes in the network limits us; the Flocklab testbed contains 27 nodes. While also being on the sparser side compared to the topologies we test in Cooja, this makes it a network which is hard to cluster.
+We impose several limitations on the evaluation of our clustering implementation. We only run tests in the Cooja simulator and on the Flocklab testbed. Running simulations gives us the freedom to choose topologies, but the simulations do not model the network perfectly. Flocklab, on the other hand, contains real nodes but is relatively small with only 27 nodes in a static configuration. We only compare our implementation to \atwo{}, and do not consider any other WSN protocols.
 
-Furthermore, we only simulate networks with 50 nodes when testing the parameters. When comparing clustering to the original \atwo{} protocol we also simulate networks with 200 nodes. We choose these node counts since we are able to simulate 50 nodes within a reasonable amount of time, allowing us to repeat those tests many times. The 200 node networks, on the other hand, takes a very long time to simulate, which is why we only simulated these large networks when comparing our work to the \atwo{} protocol.
+Furthermore, we only simulate two different network sizes, 50 nodes and 200 nodes. We only simulate 50 nodes when searching for parameter values, and include networks with 200 nodes when we compare our clustering process to \atwo{}.
 
-Lastly, we only evaluate clustering using the max application. The max application is the most straightforward application currently implemented on top of the \atwo{} protocol. We have not considered any other application, but it should be possible to modify most of the applications to fit our clustering protocol.
-
-\section{Clustering Parameters}
-\label{sec:clustering-parameters}
-In this section, we experimentally search for optimal values for the parameters of our clustering algorithm. The parameters are \emph{round re-synchronisation threshold}, \emph{competition radius}, \emph{minimum cluster size}, and \emph{nodes per cluster ratio}; the purpose of these parameters is described in \cref{design:configuration-parameters}. We run each test three to six times and plot the reliability of each test and for each network topology.
-
-We are primarily interested in reliability for these tests since reliability displays the most significant changes. There are no significant differences in the latency for different values of these parameters; we include the latency results in \cref{app:a} for completeness but will not comment on them any further for the parameter tests. We do, however, get back to latency in the comparison to the \atwo{} protocol.
-
-We use a different number of topologies depending on which parameter we evaluate. When evaluating the parameter competition radius we test on all network topologies we describe in \cref{subsec:evaluation-topology-details} since that parameter is very dependent on the density of the network. When we test the parameters minimum node count and nodes per cluster ratio, however, we use a slightly different setup.
-
-For both of those parameters, we only run tests on topologies ranging from 100x100 to 1300x1300 meters in size, using competition radius 1. We argue that increasing the competition radius while simultaneously increasing the area of the networks will not give any new significant results. By excluding the network topologies with a larger area, we could repeat each configuration for these tests a total of six times, instead of three.
-
-Also, to limit the scope of our evaluation, we use the values listed in \cref{tab:parameter-default-values} for the parameters that we are not currently evaluating. Initial tests using these parameter values gave satisfying results. However, to get a better understanding, we could evaluate how the different parameters interact with each other, but we will not perform those evaluations in this thesis.
+To limit the scope of our parameter evaluation, we use the values listed in \cref{tab:parameter-default-values} for the parameters that we are not currently evaluating.
 
 \begin{table}[bt]
 \centering
@@ -58,162 +86,196 @@ Also, to limit the scope of our evaluation, we use the values listed in \cref{ta
 \begin{tabular}{r|l}
 \textbf{Parameter}                 & \textbf{Value} \\ \hline
 Competition Radius                 & 1              \\
-Minimum node count                 & 4              \\
+Minimum cluster size                 & 4              \\
 Nodes per cluster ratio            & 10             \\
 Round re-synchronisation threshold & 3             
 \end{tabular}
 \end{table}
 
+Lastly, we only evaluate clustering using the Max application. The Max application is the most straightforward application currently implemented in the \atwo{} system. We discuss how to apply different applications and the implications of doing so in \cref{subsec:discuss-other-apps}.
+
+
+\section{Clustering Parameters}
+\label{sec:clustering-parameters}
+In this section, we experimentally search for optimal values to the parameters in our clustering algorithm. The parameters are \emph{round re-synchronisation threshold}, \emph{competition radius}, \emph{minimum cluster size}, and \emph{nodes per cluster ratio}. We run each parameter configuration three or six times and plot the reliability and stability of each test for each network topology.
+
+We only look at the reliability and stability of these tests since the purpose is to find which parameters yield the best results, in terms of running the application. However, we include the latency results in \cref{app:a} for completeness; we note that there are no significant differences in latency for different values of these parameters, and will not comment on these results any further.
+
+We use a different number of topologies depending on which parameter we evaluate. When evaluating competition radius, we test on all network topologies we describe in \cref{subsec:cooja-setup} since this parameter is dependent on the density of the network. However, when we test the parameters minimum cluster size and nodes per cluster ratio, we use topologies from 100x100 $m^2$ to 1300x1300 $m^2$, using competition radius 1. We argue that increasing the competition radius while simultaneously increasing the area of the networks will not give any new results. By excluding the network topologies with a larger area, we could repeat each configuration for these tests a total of six times, instead of three.
+
 \subsection{Round Re-synchronisation Threshold}
-The \emph{round re-sync threshold} parameter is not directly related to the clustering algorithm. Instead, it is a setting that controls a fundamental part of the original \atwo{} protocol. Round re-sync threshold is a numeric parameter that determines how many rounds a node can execute without receiving any packet before trying to associate with the network again. 
+\label{subsec-resync-threshold}
+The \emph{round re-sync threshold} parameter is not directly related to the clustering process. Rather, it is a setting that controls a fundamental part of the \atwo{} system. Round re-sync threshold is a numeric parameter that determines how many rounds a node will spend receiving no packets before associating with the network again. 
 
-We briefly evaluate different values for round re-sync threshold since initial testing showed that our clustering implementation is unstable. We started our tests using a re-sync threshold of 1 but that proved to be too strict, and we did not get satisfying results. We evaluate three different values of the round re-sync threshold (1, 2, and 3), for each value of re-sync threshold we evaluate three different values of competition radius (1, 2, and 3), which gives us a total of 9 test configurations.
+We evaluate three different values of the round re-sync threshold (1, 2, and 3), for each value of re-sync threshold we evaluate three different values of competition radius (1, 2, and 3), which gives us a total of 9 test configurations. We use different values of competition radius for these tests because we do not want a suboptimal competition radius to affect the results regarding the re-sync threshold, especially for sparser networks.
 
-Looking at the results in \cref{fig:resync-treshold-tests}, we see an increase in reliability when we increase the re-sync threshold. The reason for this dramatic increase is due to two things. First, our clustering implementations instability is due to specific scenarios occurring, such as when switching between initiators, which we describe in \cref{subsec:implementation_the-initiator}. Second, when clustering a network, each node generally has fewer chances to successfully receive
+\begin{newtext}
+We make two observations from the round re-sync threshold results, shown in \cref{fig:resync-treshold-tests}. First, the reliability is drastically increased when the re-sync threshold is greater than 1. Second, the stability increases as the re-sync threshold increases. 
 
-\newpage
+The reason reliability is low when the re-sync threshold is 1 (\cref{subfig:resync-treshold-1}), is that a clustered network is not compatible with such a low threshold. The cause of this problem is that the network has a single initiator during CH rounds, which is the CH with the lowest ID. Furthermore, we allow clusters to schedule and run the Join service during CH rounds, meaning those clusters will not participate with their value, neither will they forward packets during CH rounds. 
+
+The problem, which often occurs, is that the cluster with the lowest ID runs the Join service during a CH round, in that case, there is no initiator present for the CH round. Without an initiator, all other clusters that participate in the CH round, will increase their resynchronisation counter by one, reach the resynchronisation threshold, and start associating. Furthermore, as we discuss in \cref{section:evaluation-discussion}, our limitation regarding fault tolerance further exacerbates this problem.
+
+Usually, these scenarios only affect the stability of the network. However, in this case, the reliability is also affected since the network never has a chance to continue normal execution. Since the re-sync threshold is set too low, there is a high probability that every round has some portion of nodes associating, and some portion of nodes running the max application but failing since the only initiator is running the Join service.
+
+\end{newtext}
+
+\begin{newtext}
+Furthermore, the stability increases with the re-sync threshold. The increase in stability when increasing the parameter from 1 to 2 follows from the same reasoning as for the reliability. However, the stability continues to increase when going from 2 to 3 as well. With an increase in the re-sync threshold, there is a lower chance that a node will associate with the network since it has a higher chance of receiving at least one valid packet before it reaches the threshold. Thus we see an increase in stability since in a network with a higher re-sync threshold nodes will wait longer before recognising a bad connection and try to re-associate.
+\end{newtext}
+
+From this evaluation, we conclude that out of the values we tested, using a re-sync threshold of 3 gives the best results. Even though \cref{fig:resync-treshold-tests} imply a trend of higher stability with an increasing re-sync threshold. However, we did not test greater values of this parameter due to time constraints, we discuss implications of increasing it more in \cref{discussion:clustering-parameters}. All further evaluation of our clustering implementation uses a re-synchronisation threshold of 3.
+
 \begin{figure}[H]
 \centering
 \begin{subfigure}{\textwidth}
     \centering
-    \includegraphics[width=\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/ResyncThreshold1_Reliability.pdf}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/ResyncThreshold1_Reliability.pdf}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/ResyncThreshold1_Stability.pdf}
     \caption{Re-synchronisation threshold 1.}
     \label{subfig:resync-treshold-1}
 \end{subfigure}
 \begin{subfigure}{\textwidth}
     \centering
-    \includegraphics[width=\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/ResyncThreshold2_Reliability.pdf}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/ResyncThreshold2_Reliability.pdf}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/ResyncThreshold2_Stability.pdf}
     \caption{Re-synchronisation threshold 2.}
     \label{subfig:resync-treshold-2}
 \end{subfigure}
 \begin{subfigure}{\textwidth}
     \centering
-    \includegraphics[width=\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/ResyncThreshold3_Reliability.pdf}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/ResyncThreshold3_Reliability.pdf}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/ResyncThreshold3_Stability.pdf}
     \caption{Re-synchronisation threshold 3.}
     \label{subfig:resync-treshold-3}
 \end{subfigure}
 
-    \caption{Competition radii tests for different values of resynchronisation threshold. The reliability increases as the re-sync threshold increases.}
+    \caption{Resynchronisation threshold tests for different values of Competition radius. Both reliability and stability increases as the re-sync threshold increases.}
     \label{fig:resync-treshold-tests}
 \end{figure}
-\newpage
 
-a packet from another node since it will only listen to nodes from its cluster. This is apparent in our testing setup since we use a relatively small number of nodes and we run many tests on sparser networks, specifically 1300x1300 meters and upwards. 
-
-From this evaluation, we conclude that using a re-sync threshold of 3 is currently the best value for our clustering implementation. The plots in \cref{fig:resync-treshold-tests} suggest a trend of higher reliability with an increasing re-sync threshold. However, we did not test larger values of this parameter due to time constraints. All further evaluation of our clustering implementation uses a re-synchronisation threshold of 3.
 
 \begin{figure}[bt]
     \centering
-    \includegraphics[width=\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/CompetitionRadius_Reliability.pdf}
-    \caption{The reliability for different network sizes. Each network size has been tested with competition radius 1, 2, and 3 (from left to right).}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/CompetitionRadius_Reliability.pdf}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/CompetitionRadius_Stability.pdf}
+    \caption{The reliability and stability for different network sizes. Each network size has been tested with competition radius 1, 2, and 3.}
     \label{fig:comp-radius-reliability}
 \end{figure}
 
 \subsection{Competition Radius}
-Competition radius is a distance metric measured in hops. A node chooses a CH from all CHs that are closer than the value of the competition radius. We evaluate competition radius for the values 1,2 and 3, which ensures that we test the minimum value of 1 but also keep somewhat local clusters. When looking at the different competition radii, we are mainly interested in how the reliability varies when the density of the network decreases. We show the average reliability and the standard deviation for each network setup and each competition radius in \cref{fig:comp-radius-reliability}. We see some expected results, for networks that are sparse (e.g. network sizes from 1300x1300 to 2500x2500 meters) using a competition radius of 1 results in worse reliability than for competition radius 2 or 3. We probably get lower reliability for lower density networks because our clustering algorithm will create too many clusters and make the network even sparser, hindering communication. Even though reliability increases when we use competition radius 2 or 3 in large networks it is not by too much, it is still inefficient to cluster large networks with few nodes. 
+\label{subsec:competition-radius}
 
-Furthermore, we do not see any significant difference in the reliability for dense networks when increasing the competition radius. The reliability does not change because in very dense networks with a one-hop diameter, such as the network with an area of 100x100 meters, the competition radius is effectively always one since there are no nodes more than one hop away from any other node. The difference in reliability for the 100x100 area network seen in \cref{fig:comp-radius-reliability} is noise due to instabilities in our clustering implementation.
 
-\subsection{Minimum Node Count}
-CHs use the parameter minimum node count during the demote service to decide if they should demote themselves because their clusters are too small. We evaluate this parameter using three different values 2, 4 and off; when the value is off a CH will never demote itself due to having too few nodes in its cluster. We show the mean reliability and standard deviation of these tests in \cref{fig:min-node-count-reliability}.
+\begin{newtext}
+Competition radius determines the distance, in hops, from which a node can choose a CH. For this parameter, we evaluate the values 1, 2 and 3, which ensures that we test the minimum value of 1 but also not get too sparse clusters. We show the average, minimum, and maximum reliability and stability for each network size and each competition radius in \cref{fig:comp-radius-reliability}. Note that this figure is the same as \cref{subfig:resync-treshold-3} because we set the re-synchronisation threshold to 3 for all tests. Consequently, both of these tests use the same parameter values, so we did not rerun the test.
 
-Looking at the reliability of the different network topologies we see no clear correlation between minimum node count and the reliability on the same topology. The reliability drops, as expected, the sparser the network is.
+We see that both reliability and stability decreases as the size of the networks increase. We expect to see this decrease since clustering sparse networks will make them even sparser, which hinders communication. However, we see that higher values of competition radius are better for these networks since larger clusters are created, which does not impact communication as much as small clusters. Furthermore, the differences in stability and reliability for the denser networks (100x100, 400x400, and 700x700) is noise. These networks are 1-hop networks, and thus the competition radius value does not affect the clustering.
+\end{newtext}
 
-There are several potential reasons why we can not see any significant difference between different values for this parameter, which can not be determined by looking at the reliability graph alone. First, the impact of having a mix of small and large clusters in a network could be negligible, compared to having more equally sized clusters. The second reason could be that in the tests we ran, the clustering algorithm did not create clusters that were considered to be too small, then the parameter would not have any effect on the reliability. To further investigate the effects of this parameter we could increase the value of the parameter. However, with only 50 nodes in the network, increasing it further than we have already done could result in the clustering algorithm creating too few clusters. However, we have not performed evaluation based on the number of clusters created in a network and can therefore not provide any results on this.
+ 
+\subsection{Minimum Cluster Size}
+Minimum cluster size determines the smallest cluster that is allowed to exist after the clustering process has converged on a set of clusters. All clusters with fewer nodes are removed, and the affected nodes join other clusters. We evaluate this parameter using three different values, 2, 4, and off; off means that no clusters are considered too small. We did not test any larger values for this parameter since we only use 50 nodes for the parameter tests, and a value larger than 4 would mean that more than 10\% of the nodes in the network could be in a cluster and it would be removed, which we consider too aggressive. We show the reliability and stability for these tests in \cref{fig:min-node-count-reliability}.
+
+\begin{newtext}
+When we look at the reliability for this parameter, we see that there is no significant difference for any topology or parameter value. However, we see a small variance in stability for larger networks. Looking at the data on how many cluster heads were created and demoted for these tests, which we can see in \cref{fig:minnodecount-chsafterdemotion}, we see two interesting results. First, using higher values of this parameter show no significant difference in the number of CHs created by the clustering process. Second, there was one test which demoted many more CHs than the others, the value 2 for the 100x100 $m^2$ topology. The high number of demoted CHs resulted in the CH count being close to the average. In that test, 32 CHs were demoted while normally 1-2 CHs are demoted. This recovery demonstrates that using this parameter can help the clustering process handle faults in the Clustering service. 
+\end{newtext}
 
 
 
 \begin{figure}[bt]
     \centering
-    \includegraphics[width=\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/MinNodeCount_Reliability.pdf}
-    \caption{The reliability for different network sizes. Each network has been tested with minimum node count values off, 2, and 4 (from left to right).}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/MinNodeCount_Reliability.pdf}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/MinNodeCount_Stability.pdf}
+    \caption{The reliability and stability for different network sizes. Each network has been tested with minimum cluster size values off, 2, and 4.}
     \label{fig:min-node-count-reliability}
 \end{figure}
 
+\begin{figure}[bt]
+    \centering
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/MinNodeCount_CHsAfterDemotion.pdf}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/MinNodeCount_DemotedCHs.pdf}
+    \caption{Shows the number of CHs after the clustering process has finished, and the number of demoted CHs.}
+    \label{fig:minnodecount-chsafterdemotion}
+\end{figure}
+
 \subsection{Nodes per Cluster Ratio}
-Nodes use the \emph{nodes per cluster ratio} parameter to determine if they may elect themselves even if they have heard another CH within the chosen competition radius. The parameter describes a ratio of how many neighbours needs to be in the vicinity of the node relative to how many CHs it has as neighbours. We test the values 5, 10, 15, and off for this parameter. The value off means a CH may never announce itself if it has heard another CH within the network's competition radius; it is comparable to having an arbitrarily large value for the parameter. The results can be seen in \cref{fig:nodes-per-cluster-ratio-reliability}.
+\label{subsec:nodes-per-cluster-ratio}
+The \emph{nodes per cluster ratio} parameter determines if nodes may become CHs even if they have heard from another CH within the competition radius. The parameter describes a ratio of how many neighbours a node needs to have relative to the number of CHs the node has heard. We test the values 5, 10, 15, and off for this parameter. The value off means a CH will never announce itself if it has heard from another CH within the network's competition radius. The results can be seen in \cref{fig:nodes-per-cluster-ratio-reliability}.
 
+\begin{newtext}
+The most significant results for the nodes per cluster ratio parameter is the decrease in stability and reliability in the 1000x1000 and 1300x1300 $m^2$ networks. With more clusters in networks with a larger area, we see more clusters failing with communication, causing nodes to try and re-synchronise, which is worsened by our limitation on fault tolerance. Furthermore, the two deviations in stability for 100x100 $m^2$ in the case of 10 and 15 nodes per cluster ratio are both due to noise.
 
-When we looked closer at the results with good reliability, the trend is that the fewer clusters the algorithm created, the better the reliability is. When max node count is turned off, dense networks (100x100) only elect one CH which mostly makes the network run like \atwo{} without clustering, hence the excellent reliability results. Similarly, only one CH is elected in four out of the six tests comprising the data labelled as 400x400 with max node count set to off. The two cases in which more clusters were created are the tests with the lowest reliability, causing a lower mean and a more substantial standard deviation compared to the 100x100 tests. We can also see that when we use a value of 5, the reliability drops significantly since too many clusters are created; in some cases, for these tests, approximately 20 clusters were created. Consequently, as the value of \emph{nodes per cluster ratio} increases, we also see an increase in the mean reliability.
+Additionally, we see a small but constant decrease in reliability for the parameter value 5. This decrease is because the Clustering service creates too many clusters which are only demoted or otherwise removed, as can be seen in \cref{fig:nodes-per-cluster-ratio-promoted-ch-count}. Since demoting a CH may cause a fault, increasing the number of demotions will increase the probability of a fault to occur. Usually, these scenarios only affect the stability of the network, but in this case, the reliability is also affected since the CHs could not agree on which CHs was demoted and thus never agree on the correct maximum value in the CH rounds.
 
+Nonetheless, we noticed that more nodes announced themselves as CH with a smaller nodes per cluster ratio value as seen in \cref{fig:nodes-per-cluster-ratio-promoted-ch-count}; this shows that the parameter works as intended but requires careful consideration when configured, and needs to be adapted to the network topology.
 
+\end{newtext}
 
 \begin{figure}[bt]
     \centering
-    \includegraphics[width=\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/MaxNodeCount_Reliability.pdf}
-    \caption{The reliability for different network sizes. Each network size has been tested with max node count off, 5, 10, and 15 (from left to right).}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/MaxNodeCount_Reliability.pdf}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/MaxNodeCount_Stability.pdf}
+    \caption{The reliability and stability for different network sizes. Each network size has been tested with max node count off, 5, 10, and 15.}
     \label{fig:nodes-per-cluster-ratio-reliability}
-\end{figure}
 
-
-\subsection{Discussion}
-The results we see in the parameter evaluation vary greatly, both when looking at a single test but also when looking at the different evaluations of the parameters combined. For some parameters, like competition radius, we see a significant increase in reliability as the network area increases for higher values of competition radius. For the parameter minimum node count, on the other hand, we see almost no difference in the reliability when the value of the parameter changes. From these results, we can give some general remarks about each of the parameters.
-
-
-First, for competition radius, we see that this parameter is useful in creating reliable clusters since this is the parameter that overall had the most significant impact on the reliability of a test when increasing the network area. 
-
-Second, for minimum node count, the results we got from these tests suggest that this parameter does not have an impact on the overall reliability of the tests we ran. However, even if this is true, there is still a bad scenario that can occur which this parameter will solve. The scenario is that a node announces itself as CH, but no other nodes join its cluster. When a CH is alone in its cluster, it will, in the current implementation, only run the join application and never the max application. A CH not running the max application will result in lower reliability since we expect all CHs to receive either the local or global maximum value at the end of each round.
-
-We can see an example of this bad scenario occurring by looking at an individual test from the evaluation of minimum node count. This test, which ran on the 700x700 topology, suffered from a bug causing a CH to form a cluster by itself resulting in the reliability $26\%$. Other tests on the same topology achieved much higher reliability, with the highest being $99.4\%$. There are many possible causes to why there might be such a significant difference between the reliability in the best and worst tests. However, we believe the most critical factor is that the test with the lower reliability had a cluster with a single node in it, for 170 of the rounds it should have been running the max application. We show the clusters created for that particular run in \cref{fig:min-node-count-example}, as we can see the CH with id 12 at the top does not have any other node in its cluster.
-
-\begin{figure}[bt]
     \centering
-    \includegraphics[width=0.5\textwidth]{figure/Results/Discussion/MinNodeCountExample.pdf}
-    \caption{An example of a clustering in a 700x700 network which resulted in one CH (node 12) being alone in its cluster. Each colour represents a different cluster, and the larger nodes are CH.}
-    \label{fig:min-node-count-example}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/MaxNodeCount_PromotedCHCount.pdf}
+    \includegraphics[width=0.49\textwidth, keepaspectratio]{figure/Results/ParameterEvaluation/MaxNodeCount_DemotedCHCount.pdf}
+    \caption{The number of elected CHs before the Demote service runs, and the number of demoted CHs.}
+    \label{fig:nodes-per-cluster-ratio-promoted-ch-count}
 \end{figure}
-
-Last, the nodes per cluster ratio parameter worked as we expected. The idea behind this parameter is that since clustering a network should be desirable we want to address the fact that our clustering service is too aggressive when it determined which nodes are allowed to become cluster heads. However, because of the instability in our clustering, the results we got was effectively the opposite, when fewer clusters were created, we got better reliability. Suggesting that this parameter should always be completely turned off.
-
-Nonetheless, we can still consider the parameter useful since it addresses a shortcoming in the algorithm design. For our purpose, the most relevant metric for this parameter is not the reliability of the tests but rather the number of clusters created. We have not performed a rigorous analysis of the results in this regard; however, the data we have looked at suggests that the parameter performs its intended function.
-
-
 
 \section{Comparing \atwo{} with Clustering}
-In this section, we outline the results we get from evaluating \atwo{} with clustering and compare those results with the results we get from our evaluation of the original \atwo{} protocol. We show results for reliability, latency, and estimated energy usage for all tests we run. We begin by describing the reliability results since they are the most varying and the relevance of the results about latency and energy depend on the reliability of a test.
-
-Note that we have excluded data from two tests (50 nodes in the 2500x2500 topology and 200 nodes in the 400x400 topology) since they suffered the scenario we describe in \cref{subsec:implementation_the-initiator}, i.e., the original initiator starts associating early causing the whole network to get stuck associating. This happened in one out of the three tests we run for each of the two configurations, which is why only two points are visible for those topologies. We exclude these tests since they almost never ran the max application, which means that we have no data about the reliability or latency. Furthermore, when the nodes associate they use more energy giving us two outliers in the test results which do not say anything useful about how much energy our clustering protocol consumes.
-
-Furthermore, from our evaluation of the clustering parameters in \cref{sec:clustering-parameters}, we know that different values of some parameters drastically affect the performance of our clustering protocol, especially competition radius. Consequently, we have used different values for some parameters for different network topologies. We change the value of the parameter competition radius as the network size increases for the topologies consisting of 50 nodes, to not create too many clusters in already sparse networks. Additionally, we change the value of the parameter nodes per cluster ratio for the two smallest topologies in the 200 nodes test (100x100 and 400x400), to force the algorithm to create an appropriate amount of clusters in dense networks. We list all topologies we test on and the parameter values that change for the tests in \cref{app:parameter-values-for-the-atwo-comparison}.
+\label{sec:comparing-a2-and-clustering}
+In this section, we show the results of evaluating our clustering implementation and compare with the results from our evaluation of the original \atwo{} system. We show results for stability, reliability, latency, and estimated energy usage for all tests we run. We use different parameter values for some network topologies during this comparison. The most significant change is that we increase the competition radius as the network sizes increases. We list all parameter values for these tests in \cref{app:parameter-values-for-the-atwo-comparison}.
 
 
+\subsection{Reliability and Stability}
+\label{subsec:evaluation-reliability}
+\begin{newtext}
+We show reliability and stability for the evaluations with 50 nodes in \cref{subfig:reliability-50-nodes} and for 200 nodes in \cref{subfig:reliabilty-200-nodes}. Looking at the reliability for both of these, we see almost no difference for most network topologies, except with 50 nodes for 2200x2200 and 2500x2500 $m^2$, where the reliability drops when using clustering. The reason it drops is presented in detail \cref{subsec:competition-radius}, but essentially, too small clusters are created for these sparse networks.
+
+However, the stability results have a higher variance. In the networks with 50 nodes, the clustered networks have lower stability, there are some tests which achieve similar levels of stability, but on average it is lower or much lower. In networks with 200 nodes, on the other hand, clustering achieves better results, the average stability is still lower than for the \atwo{} system, but there are some tests where clustering outperforms \atwo{} slightly. 
+
+The reason \atwo{} drops in stability for 200 nodes, is that when one node loses connection with the network, the whole network has to spend on average, two or three rounds running the Join service. The clustering implementation, on the other hand, should only have to run the Join service locally in the affected cluster, which impacts stability less. However, since the clustering implementation lacks fault tolerance (discussed in \cref{section:evaluation-discussion}), the stability results for clustering are worse than they could be.
+
+Furthermore, the stability has a decreasing trend in the 50 node networks while it is increasing in the 200 node networks. The reason the stability has an increasing trend in 200 node networks is that the small networks are dense and therefore generate more interference, which increases the number of faults that occur. However, we have not tested larger networks than 1300x1300 $m^2$ using 200 nodes, and it is possible that the stability will show a similar trend as the 50 nodes network when the area of the networks is increased further.
+
+\end{newtext}
 \begin{figure}[bt]
     \centering
-    \begin{subfigure}{0.7\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figure/Results/ChaosComparison/ChaosComparison_50_Reliability.pdf}
-        \caption{Networks with 50 nodes.}
-        \label{subfig:reliability-50-nodes}
+    \begin{subfigure}{\textwidth}
+            \centering
+            \includegraphics[width=0.45\textwidth]{figure/Results/ChaosComparison/ChaosComparison_50_Reliability.pdf}
+            \includegraphics[width=0.45\textwidth]{figure/Results/ChaosComparison/ChaosComparison_50_Stability.pdf}
+            \caption{Networks with 50 nodes.}
+            \label{subfig:reliability-50-nodes}
     \end{subfigure}
     \hfill
-    \begin{subfigure}{0.7\textwidth}
+    \begin{subfigure}{\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{figure/Results/ChaosComparison/ChaosComparison_200_Reliability.pdf}
+        \includegraphics[width=0.45\textwidth]{figure/Results/ChaosComparison/ChaosComparison_200_Reliability.pdf}
+        \includegraphics[width=0.45\textwidth]{figure/Results/ChaosComparison/ChaosComparison_200_Stability.pdf}
         \caption{Networks with 200 nodes.}
         \label{subfig:reliabilty-200-nodes}
     \end{subfigure}
-    \caption{Reliability comparison between \atwo{} with clustering and original \atwo{}.}
+    \caption{Reliability and stability comparison between \atwo{} with clustering and original \atwo{}.}
     \label{fig:reliability-result}
 \end{figure}
-\subsection{Reliability}
-\label{subsec:evaluation-reliability}
-As seen in \cref{fig:reliability-result}, \atwo{} outperforms the clustering implementation in reliability in all cases. However, we see some promising results for the clustering implementation in the topology with 50 nodes in an area of 1000x1000 meters, \cref{subfig:reliability-50-nodes}, where two out of three tests has a reliability of more than $97.5$ percent. Both of these tests produced somewhere between two to four clusters in the network. At 1300x1300 meters in \cref{subfig:reliability-50-nodes}, the reliability drops to just below $50\%$ and then continues to decrease as the area of the networks increase. Looking at the results for 50 versus 200 nodes in \cref{subfig:reliability-50-nodes} and \cref{subfig:reliabilty-200-nodes} we compare network topologies from 100x100 up to 1300x1300 meters. When increasing the node count from 50 to 200, the reliability of all tests drop, except for the 1300x1300 topology in the clustering case.
 
 
-The drop in reliability for \atwo{} is probably due to interference; Al Nahas et al.~\cite{a2-introduction-paper} have already observed and resolved this issue in dense networks by using parallel channels, which we describe in \cref{subsec-frequency-agility}. As we have disabled parallel channels, the reliability is affected. Similarly to parallel channels, clustering should also artificially lower network density and resolve the problem of interference. Hence, we expected a more significant drop in reliability from \atwo{} than in the clustering solution. However, this is not what we observe in the comparison between 50 and 200 nodes. Instead, we see that reliability does not scale to dense networks well with clustering. 
-
-The reliability increase of the 1300x1300 network when moving from 50 to 200 nodes. One cause could be the node density on the 1300x1300 network with 200 nodes is comparable to that of the 700x700 network with 50 nodes. In \cref{subfig:reliability-50-nodes}, we have good results on the 700x700 network with 50 nodes motivating that the node density is suitable for clustering. Further evaluation would include runs of 200 node networks for network sizes bigger than 1300x1300 meters to see if the trend has been shifted. However, it could also be the case that the tests were lucky with the clusters created.
 
 \begin{figure}[bt]
     \centering
-    \begin{subfigure}{0.7\textwidth}
+    \begin{subfigure}{0.45\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figure/Results/ChaosComparison/ChaosComparison_50_Latency.pdf}
         \caption{Networks with 50 nodes.}
         \label{subfig:latency-50-nodes}
     \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.7\textwidth}
+    %\hfill
+    \begin{subfigure}{0.45\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figure/Results/ChaosComparison/ChaosComparison_200_Latency.pdf}
         \caption{Networks with 200 nodes.}
@@ -223,23 +285,23 @@ The reliability increase of the 1300x1300 network when moving from 50 to 200 nod
     \label{fig:latency-results}
 \end{figure}
 
+
 \subsection{Latency}
-We show the mean latency and standard deviation for each test we run in \cref{fig:latency-results}. Looking at the tests using 50 nodes (\cref{subfig:latency-50-nodes}) our latency is on average a little lower than \atwo{} but with a higher standard deviation. We see a similar trend for 200 nodes (\cref{subfig:latency-200-nodes}), the standard deviation is still high, however, our clustering consistently has lower average latency for all topologies tested. 
+We show the mean latency and standard deviation for each test we run in \cref{fig:latency-results}. Looking at the tests using 50 nodes (\cref{subfig:latency-50-nodes}) the latency for the clustering implementation is on average a little lower for network topologies smaller than $2200x2200m^2$, after that the \atwo{} system outperforms our implementation. However, for all network topologies our clustering implementation has a higher standard deviation. We see a similar trend for 200 nodes (\cref{subfig:latency-200-nodes}), the standard deviation is still high; however, our clustering implementation consistently has a lower mean latency for all topologies tested. 
 
-We expect to see a lower latency on average, especially for 200 nodes, since each cluster has to handle a smaller amount of nodes while \atwo{} without clustering always has to handle all 200 nodes in the network. However, we have to take into account that our solution has much lower reliability than \atwo{}. Since we only measure the latency when the max application is running, if some nodes spend much time either associating or running another application (such as the join service) we do not count the latency for those nodes. Thus, for tests with lower reliability, we will have fewer data points for the latency measurements than for tests with higher reliability.
+If we compare the latency between 50 nodes and 200 nodes, we see that it increases as the number of nodes increases. Consequently, we get lower latency when applying clustering since each cluster only contains a proportion of all nodes in the network.
 
-Furthermore, we have to take into account that we split the application rounds into cluster and cluster head rounds. To spread the same information to the CH nodes as \atwo{} does in one round, we need to run first a cluster round and then a CH round, which means that we effectively require two rounds to complete an application, rather than one. Thus we could argue that the actual latency for our application is twice the number that we depict in the graph, which would make our solution considerably slower than \atwo{}.
+
 
 \begin{figure}[bt]
     \centering
-    \begin{subfigure}{0.7\textwidth}
+    \begin{subfigure}{0.45\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figure/Results/ChaosComparison/ChaosComparison_50_Energy.pdf}
         \caption{Networks with 50 nodes.}
         \label{subfig:energy-50-nodes}
     \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.7\textwidth}
+    \begin{subfigure}{0.45\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figure/Results/ChaosComparison/ChaosComparison_200_Energy.pdf}
         \caption{Networks with 200 nodes.}
@@ -251,101 +313,138 @@ Furthermore, we have to take into account that we split the application rounds i
 
 
 \subsection{Energy}
-In \cref{fig:energy-results}, we plot the average energy usage per node per Energest time unit. What we look at here is the trend when increasing the area of the networks and how it shifts for the two different number of nodes. We observe in \cref{subfig:energy-50-nodes} that the energy usage for clustering increases with network area. The energy usage increases because the reliability drops, as we can see in \cref{subfig:reliability-50-nodes}; the decreasing reliability is due to nodes triggering resynchronisation meaning they enter the association phase which uses more energy since nodes do not sleep when they are trying to associate with the network.
+In \cref{fig:energy-results}, we show the mean energy usage per node per Energest time unit. We observe in \cref{subfig:energy-50-nodes} that energy usage for clustering increases with network area. We also observe that stability (\cref{subfig:reliabilty-200-nodes}) has an inverse relationship to energy usage, because an unstable node consumes more energy than a stable node. Both associating with the network and running the Join service requires more energy than the max application. They take more energy since the Join service takes longer time than the max application, and when a node associates it does not sleep.
 
-Comparing 50 to 200 nodes we notice a higher energy usage on average for 200 nodes, this is expected for \atwo{} since more nodes imply more communication and longer rounds, which directly leads to higher energy consumption. Clustering shows
+Comparing 50 to 200 nodes we notice a higher energy usage on average for 200 nodes, which we expect to see since more nodes require more communication and longer rounds, which leads to higher energy consumption. Clustering shows a small advantage with 200 nodes \cref{subfig:energy-200-nodes}, compared to \atwo{}; each cluster can reach consensus in fewer slots than the whole network can, which is why the average energy usage is lower on all topologies.
+
+Finally, the energy usage differs from the other metrics in that it is measured during both the coordination and application phase.  It is measured in all rounds because the energy results for only the applications could be misleading since the energy usage by the clustering process could outweigh the benefit of clustering the network.
 
 \begin{figure}[bt]
     \centering
-        \begin{subfigure}{0.32\textwidth}
-        \centering
-        \includegraphics[width=\textwidth, keepaspectratio]{figure/Results/ChaosComparison/Flocklab/FlocklabComparison_Latency.pdf}
-        \caption{Latency.}
-        \label{subfig:flocklab-latency}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.32\textwidth}
+    \begin{subfigure}{0.24\textwidth}
         \centering
         \includegraphics[width=\textwidth, keepaspectratio]{figure/Results/ChaosComparison/Flocklab/FlocklabComparison_Reliability.pdf}
         \caption{Reliability.}
         \label{subfig:flocklab-reliability}
     \end{subfigure}
-    \begin{subfigure}{0.32\textwidth}
+    \begin{subfigure}{0.24\textwidth}
+        \centering
+        \includegraphics[width=\textwidth, keepaspectratio]{figure/Results/ChaosComparison/Flocklab/FlocklabComparison_Stability.pdf}
+        \caption{Stability.}
+        \label{subfig:flocklab-stability}
+    \end{subfigure}
+    \begin{subfigure}{0.24\textwidth}
+        \centering
+        \includegraphics[width=\textwidth, keepaspectratio]{figure/Results/ChaosComparison/Flocklab/FlocklabComparison_Latency.pdf}
+        \caption{Latency.}
+        \label{subfig:flocklab-latency}
+    \end{subfigure}
+    \begin{subfigure}{0.24\textwidth}
         \centering
         \includegraphics[width=\textwidth, keepaspectratio]{figure/Results/ChaosComparison/Flocklab/FlocklabComparison_Energy.pdf}
         \caption{Energy.}
         \label{subfig:flocklab-energy}
     \end{subfigure}
-    \caption{The mean and standard deviation for the latency, reliability, and energy consumption for the Flocklab tests.}
+    \caption{The results of running \atwo{} and our clustering implementation on the Flocklab testbed. We show the mean and min/max for stability and reliability, and the mean and standard deviation for latency and energy consumption.}
     \label{fig:flocklab-results}
 \end{figure}
-
-a small advantage in the 200 network \cref{subfig:energy-200-nodes}, compared to the \atwo{} protocol; each cluster can reach consensus in fewer slots than the whole network can, and it is probably the reason why our average energy usage is slightly lower in all topologies. Besides these observations the trends in 50 and 200 nodes are similar.
 
 
 
 \subsection{Flocklab}
-We evaluate the \atwo{} protocol with and without clustering on the Flocklab testbed. We run both protocols four times for 30 minutes and and present the results from these tests in \cref{fig:flocklab-results}. It is clear that \atwo{} outperforms our solution in all metrics, achieving a significantly lower latency, higher reliability, and lower energy consumption.
+We present the results from our tests on the Flocklab testbed in \cref{fig:flocklab-results}, which we get by running our clustering implementation and the \atwo{} system four times each. We see that \atwo{} outperforms our implementation in all metrics, achieving higher reliability and stability, lower latency, and lower energy consumption.
 
-There are probably several reasons for the difference in performance. First, our clustering solution is sometimes unstable, especially in smaller, sparser networks. In a small network and the presence of external interference, our solution does not perform well. Second, the Flocklab network is probably not a good candidate for clustering. As we have discussed previously, applying clustering to a network without taking into account its density and node count will produce poor results.
+\begin{newtext}
+Flocklab is a small and relatively sparse network with only 27 nodes, and it is also affected by external interference, which the simulations do not model. All of these factors contribute to lower stability, for both \atwo{} and the clustering implementation. 
 
-Additionally, we can look at the topology of Flocklab, which we show in \cref{fig:flocklab-topology}, to further explore our results. During the tests we run, the nodes located in the top left corner (1, 2, 4, 8, and 15) spend almost all of their time trying to associate with the network, unless the clustering service elects one of them as CH. When one of them is a CH, we get marginally better results since they have an easier time to get the correct max value. This show that, in some cases, our clustering can be heavily location dependent.
-
-One thing to note is that the mean reliability for the \atwo{} protocol when we run our evaluation is approximately $86\%$. However, in the original evaluation of Chaos, Al Nahas et al.~achieved reliability of $99.9\%$ \cite{chaos-introduction-paper}. The large difference in reliability is mainly because we measure reliability differently. We have not collected the data needed to confirm their reliability results with the original reliability definition from Landsiedel et al.~\cite{chaos-introduction-paper}. However, the results presented from Cooja simulations in \cref{fig:reliability-result} does hold up to the results presented by Al Nahas et al.~\cite{a2-introduction-paper}, even under our stricter reliability definition.
-
-\begin{figure}[bt]
-    \centering
-    \includegraphics[width=0.75\textwidth]{figure/Results/ChaosComparison/Flocklab/FlocklabTopology.png}
-    \caption{The topology of the Flocklab testbed \cite{Lim2013-flocklab-introduction}.}
-    \label{fig:flocklab-topology}
-\end{figure}
-
+When clustering the Flocklab network what often happens is that some node loses connection and need to associate with the network, to handle this the Join service is scheduled. Because no test run created more than two CHs, approximately half of the nodes begins to run the Join service, this makes it even harder for the other nodes to communicate, forcing more nodes to associate, creating a compounding effect of more and more nodes associating with the network. Nonetheless, running the clustering implementation on the Flocklab testbed demonstrates that the clustering process works when running on real nodes.
+\end{newtext}
 
 
 \section{Discussion}
-From our evaluation comparing \atwo{} and \atwo{} with clustering we conclude that using our clustering protocol performs at best as good as \atwo{} in every metric we measure. The most significant difference is in reliability, where we consistently have significantly lower reliability than \atwo{}. For the metrics latency and energy we are on par or even in the case of latency, a bit better, than \atwo{} we have to take into consideration that our clustering protocol performs only half as many application runs as \atwo{}, due to the interleaving cluster and CH rounds.
+\label{section:evaluation-discussion}
+In this section, we discuss insights from our results. Furthermore, we discuss how our limitation on fault tolerance affected the stability of the networks. We also discuss running other applications in a clustered network, and end with some comments regarding the scalability and energy efficiency of a clustered network.
 
-There are several possible reasons for these shortcomings, as we have mentioned previously, our clustering implementation is somewhat unstable. Because we switch which nodes considers themselves initiators, the network can end up in a state where no node consider themselves initiator. In a worst-case scenario, the tests will have $0\%$ reliability, because the network has never executed the application leaving us with no reliability data. This scenario may occur at any point during the execution, but we observe it happen more often at the times of reclustering when the dedicated initiator should return as coordinator, which is at round 200 and 400.
 
-However, there also exist test runs where our reliability is comparable to \atwo{}; notably we got up to $98.6\%$ reliability for some of the tests. This demonstrates that we can achieve good performance with our clustering protocol under the right circumstances. However, it is difficult to tell what exactly those circumstances are. What we can observe is that these good runs generally create two or three clusters, all of which are relatively similar in their sizes. However, some runs with the same properties provide results with low reliability. Thus, a more thorough examination of the communication within clusters is required since we cannot draw conclusions only from the number of CHs elected and the number of nodes in each cluster.
+\subsection{Stability and Fault Tolerance}
+\label{subsec:discussion-stability-and-fault-tolerance}
+\begin{newtext}
+From the results we get from comparing \atwo{} to our implementation, we see that our clustering implementation achieves similar reliability in almost all cases. However, the stability has high variance and is, in some cases, much lower. The primary reason for these stability results is that we did not consider fault tolerance for our clustering implementation. In this section, we will describe and discuss what scenarios lead to lower stability and how they relate to fault tolerance.
 
-We illustrate the fact that networks with very similar clustering can have drastically different reliability in \cref{fig:comparing-good-and-bad-clustering}. The network to the left in the figure (\cref{subfig:bad-clustering}) achieved reliability of $51.2\%$ while the network to the right in the figure (\cref{subfig:good-clustering}) achieved reliability of $98.6\%$. If we look at the heat map over which application is running in the networks at different times in \cref{fig:application-map-comparing-good-and-bad-clustering} we observe that in one of the networks the join application is scheduled periodically throughout the entire run, but not in the other network. Note that we compare rounds 1-199 in one network and rounds 200-399 in the other network, but this does not affect the comparison.
 
-To understand why the bad test intermittently schedules the join application we have to look at the differences in the clusters in \cref{fig:comparing-good-and-bad-clustering}. Both networks are overall similarly clustered, the clusters are approximately the same size and located in the same places. However, two nodes have changed clusters, node 23 and node 40. When we looked at the raw data for this particular test run, we saw that it was primarily node 23 that had trouble joining its cluster, probably because it was too far away to get enough packets from its cluster. Therefore, it never could complete the join protocol. In contrast, in the good network, this does not happen, even though the two tests have created similar clusters.
 
-\subsection{Calculating the Reliability of a Test}
-The way we chose to calculate the reliability of a test may have been unnecessarily strict. What follows is three scenarios where our reliability calculations might have given unnecessarily bad results.
+One of the most common fault tolerance issues is that a node loses connection to the network and has to re-associate with it. For a node, this process should look as follows.
+    
+\begin{enumerate}
+    \item A node does not receive any packet for some rounds equal to \emph{round re-synchronisation threshold}.
+    \item The node switches to association, listening for a packet with which it can synchronise.
+    \item The node sets the join flag in outgoing packet headers, requesting that the initiator schedule the Join service.
+    \item The current initiator schedules the Join service for its cluster.
+\end{enumerate}
 
-First, in \cref{subsec:evaluation-reliability} we look at \cref{fig:reliability-result} and observe that the reliability of the clustered network topology in an area of 100x100 with 50 nodes is a lot higher than for 200 nodes. The reason for this significant difference in reliability is due to that the network with 200 nodes schedules the join service intermittently during the execution of the test, as seen when comparing the executions of the 50 nodes (\cref{fig:application-map-50-nodes}) to the 200 nodes (\cref{fig:application-map-200-nodes}). The pink dots represent the join service, and the yellow dots represent the max application. However, scheduling the join service should be an expected operation for a network to provide basic fault tolerance. 
-\newpage
+By analysing the tests from the comparison of our implementation to the \atwo{} system, we see that stability issues always occur in step 4 of this process. We performed this analysis by looking at the outcomes of tests in the simulator; we do not attach any details of this here since it is too extensive.
 
+Properly scheduling the Join service is complicated since we change both which node is the initiator and which nodes communicate while switching between cluster and cluster head rounds. The most common scenario, exemplified in \cref{fig:scenario-one-bug-example}, is that a node, in this case node 17, sets its join flag during a CH round, this happens first in round 270 in the example, and forces the first CH to schedule the Join service. The problem is that it does not matter which cluster node 17 has joined, it is always the first cluster that schedules the Join service. Consequently, since node 17 never gets the chance to join, because the wrong cluster is running the Join service, this scenario continues until a reclustering is scheduled.
+
+\end{newtext}
 \begin{figure}[bt]
     \centering
-        \begin{subfigure}{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth, keepaspectratio]{figure/Results/Discussion/ClusteringExample50nodes1000x1000maxOffRun1Bad.pdf}
-        \caption{Clustering 50 nodes, achieving a reliability of $51.2\%$.}
-        \label{subfig:bad-clustering}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth, keepaspectratio]{figure/Results/Discussion/ClusteringExample50nodes1000x1000maxOffRun5Good.pdf}
-        \caption{Clustering 50 nodes, achieving a reliability of $98.6\%$.}
-        \label{subfig:good-clustering}
-    \end{subfigure}
-    \caption{An example of two networks with an area of 1000x1000 and very similar clustering but with a significant difference in reliability.}
-    \label{fig:comparing-good-and-bad-clustering}
+    \includegraphics[width=0.75\textwidth] {figure/Results/Discussion/50NodesRun21000x1000Scenario1Example.pdf}
+    \caption{Example of what happens when a node requests the Join service to be scheduled, blue is the correct application, green is the Join service, and yellow is the Clustering service. The first cluster repeatedly schedules the Join service without any effect.}
+    \label{fig:scenario-one-bug-example}
 \end{figure}
 
 
+\begin{newtext}
+Furthermore, if a CH loses connection to the network and has to associate, additional problems can occur. What happens depends on which CH associates. First, if the CH with the lowest ID associates, the network cannot continue normal execution, since that CH is the initiator during CH rounds. Causes and solutions to this problem are discussed more thoroughly in \cref{subsec:implementation_discussion-the-initiator}. Second, if another CH associates, the network will continue to execute the application. However, that node neither contributes its value nor sets its flag during CH rounds, which means the other nodes will never know that they have reached completion and cannot shut down early during CH rounds. This scenario does not impact the stability of the application, but it increases the latency and energy usage.
 
-Second, because we schedule CH rounds statically every other round, the network could run the first instance of the max application during a CH round; it depends on how many join rounds the network required after the demote phase. If max is run first in a CH round, and the node with the highest ID is not a CH, then this round will automatically fail. We do not take this into account when calculating the reliability of a test run since it should happen infrequently.
+Finally, that our clustering implementation works in the absence of faults is supported by the reliability and stability results in \cref{fig:reliability-result}. Since the reliability metric does not include scenarios which require fault tolerance, it expresses the fact that clustering achieves good results during normal operation of the network. Additionally, from the stability results for 200 nodes, \cref{subfig:reliabilty-200-nodes}, we see that there are some tests which achieve better stability than \atwo{}, demonstrating that our clustering implementation has the potential to achieve better stability than the \atwo{} system in larger networks.
+\end{newtext}
 
-Third, the way we calculate reliability can be argued to have an unavoidably decreasing trend when the amount of nodes in the network increases. If a single node fails, the whole round counts as a fail for all clusters, even if some are successful. Hence, more nodes lead to a higher probability of a single failure, which means a higher probability for a failed round.
-\newpage
-\input{figure/Results/Discussion/applicationmap-50nodes-1000x1000-max-off-run1vs5-bad-vs-good.tex}
 
-\input{include/backmatter/Appendix_50_nodes_application_heatmap.tex}
-\input{include/backmatter/Appendix_200_nodes_application_heatmap.tex}
+\subsection{Clustering Parameters}
+\label{discussion:clustering-parameters}
+The results we see in the parameter evaluation varies greatly, both when looking at a single test but also when looking at the different evaluations of the parameters combined. From the parameter evaluation, we can give some general remarks about each of the parameters.
 
+\begin{newtext}
+%Resync threshold discussion.
+As we see in the resynchronisation threshold evaluation (\cref{subsec-resync-threshold}), both the stability and reliability increase significantly as the re-sync threshold increases. These results suggest that we should increase the re-sync threshold indefinitely. We did not evaluate this parameter further due to time constraints.
+
+
+However, there are other reasons why indefinitely increasing this parameter will not yield the desired results. Re-sync threshold controls the number of rounds a node will wait while receiving no packets until it re-synchronises with the network again. Thus this parameter only fixes the symptom and not the cause of the problem, which is that a node has a bad connection to its cluster. For example, with a high re-sync threshold a node might stay in a suboptimal cluster since it receives enough packets to reset the re-sync threshold but not enough packets to complete the application running in the cluster, which will affect reliability.
+\end{newtext}
+
+
+For competition radius, we see that it is a parameter useful for creating reliable clusters since it had the most significant impact on the stability of a test for larger network areas.
+
+For minimum cluster size, the results we got suggest that this parameter has a small impact on the overall stability. However, we see no correlation between the overall number of CHs and the stability, suggesting that these results either have some other underlying cause or the difference is due to noise. However, this parameter should be used, since it prevents clusters with only one node to form.
+
+Last, the nodes per cluster ratio parameter worked as we expected. With a lower value of this parameter, we saw that the clustering process created more CHs. However, this parameter requires careful consideration since it can cause too many CHs to be created for sparse networks, as we see in \cref{subsec:nodes-per-cluster-ratio}.
+
+\subsection{Running Other Applications in a Clustered Network}
+\label{subsec:discuss-other-apps}
+\begin{newtext}
+Throughout this thesis, we limit our evaluation to the Max application. This limitation is because our focus was to implement clustering on top of the \atwo{} system, and not to see how different applications perform in a clustered network. However, we discuss how other applications may benefit from a hierarchical network to show that clustering is not limited to the Max application. Some common applications for a WSN include calculating a sum, mean, median, or performing a 2 or 3 phase commit. However, running applications in a clustered network require some adaptations, compared to a normal network.
+
+Calculating a sum in a clustered network requires few adaptations from an implementation for a non-clustered network, however, it can take advantage of the hierarchical communication. Each CH would be able to calculate its cluster's sum of proposed values. CHs then repeat the same process during the CH round where they share their intermediary sum with all other CHs. However, one difference when calculating a sum compared to a maximal value is that a CH needs to maintain a list of all contributed values and which node contributed with what value. If the nodes were to add values together, then the same value could be added to the sum multiple times. Since \atwo{} has a restriction on the packet size, the number of nodes that can propose values is restricted. Clustering the network would directly help with this since smaller parts of the network calculate separate sums, which means the list of proposed values is smaller.
+
+Furthermore, calculating the median in a clustered network require more resources than calculating a sum, since all values have to be known to at least one node. Clustering affects the size of the required list in each cluster in the same way as when calculating the sum. However, the CH cannot perform an intermediary calculation as in the sum application. The CHs will instead share the lists between each other, merging all lists from all clusters, which would result in a list with a length equal to the number of nodes in the network. Therefore, calculating the median in a clustered network compared to a non-clustered network does not scale better with regards to packet size.
+
+However, calculating the mean can make efficient use of a clustered network. A mean calculation requires two things: the sum of all proposed values, and the number of proposed values. Because a CH already knows the size of its cluster, they can perform a mean calculation in the same way as the sum calculation, with the extension that the CHs calculate the sum of the cluster sizes. At the end of the CH round, all CHs know the sum of all proposed values and the sum of all cluster sizes and can, therefore, calculate the mean.
+
+Two other applications, which are more complicated than mean, sum and median, are two and three phase commit. Adapting these to run on a clustered network is not as straightforward. These applications can take advantage of clustering in all phases, running some of the collection and dissemination in parallel in every cluster. However, coordination is required between the CHs when switching between phases. The complexity lies in switching which node is the initiator when switching between inter- and intra-cluster communication. Especially if we were to implement a solution which executes the whole commit protocol in one round. We discuss the problems with switching between initiators in a round in \cref{subsec:implementation_discussion-the-initiator}.
+
+In conclusion, clustering should increase the performance and scalability for many applications running on a WSN. Even applications which require a global view of the network can benefit from hierarchical communication. However, further work is required to implement these applications to evaluate the effectiveness of the clustering implementation.
+
+\end{newtext}
+
+\subsection{Achieving Better Scalability}
+\begin{newtext}
+One of the primary goals of this thesis is to increase the scalability of the \atwo{} system. We do not have a metric for measuring scalability directly, however, using the combined information from all metrics we argue that we achieved our goal. From the latency and energy usage results, we saw that our solution achieved a lower latency and energy usage for networks with 200 nodes. Additionally, since we cluster the network before running the Join service, the restriction caused by the flags field is not applied until after the clusters are created. Thus,  we increase the theoretical maximum number of nodes in the network, and the restriction is now local to every cluster.
+
+However, there are some caveats to achieving better scalability. First, we measure the latency results per round. We do not take into account that a clustered network requires two complete rounds to agree on a global maximum value, while \atwo{} only requires one round. A clustered network requires two rounds because we schedule the inter- and intra-cluster communication in separate rounds. Second, even though our implementation has lower stability than \atwo{} in almost all cases, we achieve better latency and lower energy usage; this is good since we achieve those results even in the presence of more faults.
+
+Furthermore, low stability could imply less scalability as well. Our results suggest that the stability decreases as the number of nodes increase, however, we have shown that this is caused by our limitation on fault tolerance and is not inherent to clustering the network.
+
+Despite these caveats, we argue that the results are promising. From the discussion on fault tolerance we conclude that we could attribute the drops in stability to our limitation on fault tolerance. If future work research and implement fault tolerance, our clustering implementation has a high probability of achieving equal or better stability while running more scalable and energy efficient networks.
+\end{newtext}

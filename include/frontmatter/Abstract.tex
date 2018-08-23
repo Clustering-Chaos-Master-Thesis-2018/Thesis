@@ -4,16 +4,16 @@
 Department of \department\\
 Chalmers University of Technology and University of Gothenburg\setlength{\parskip}{0.5cm}
 
-\thispagestyle{plain}			% Supress header 
+\thispagestyle{plain}            % Suppress header 
 \setlength{\parskip}{0pt plus 1.0pt}
 \section*{Abstract}
 
-Wireless Sensor Networks are becoming more and more popular today with the decrease in cost to manufacture sensor nodes and the increased popularity of cyber-physical systems. One of the most significant challenges for Wireless Sensor Networks is to minimise the energy consumption of the nodes. The nodes' battery capacity is often limited, and they are expected to work without human intervention for several years at a time. Another challenge for Wireless Sensor Networks is scaling. However, making the network scale better often impacts the energy consumption negatively; it is not always clear which issue to prioritise. Clustering is a widely used technique to increase scalability and decrease energy consumption. In this thesis, we apply clustering on top of the \atwo{} protocol. Our starting point, \atwo{}, is an already implemented mesh protocol running on top of ContikiOS. Our work consists of designing and implementing a clustering scheme, based on the HEED clustering algorithm, to partition the network and create a hierarchical communication medium. We evaluate our work in the Cooja simulator and on the Flocklab testbed, and compare it to the original implementation of \atwo{} using the metrics reliability, latency, and energy usage. Our evaluation shows that our clustering implementation performs worse than the \atwo{} protocol regarding reliability. However, we achieve better latency and slightly better energy usage than the \atwo{} protocol for larger networks.
+Wireless Sensor Networks are becoming more and more popular with the decrease in cost to manufacture sensor nodes and the increased popularity of cyber-physical systems. One of the most significant challenges for Wireless Sensor Networks is to minimise the energy consumption of the nodes, as their battery capacity is often limited, and they are expected to work without human intervention for several years at a time. Another challenge for Wireless Sensor Networks is scalability since they may scale to thousands of nodes. Clustering is a widely used technique to both decrease energy consumption and increase scalability. In this thesis, we aim to increase the network lifetime and the scalability of the \atwo{} system, by integrating clustering with it. Our starting point, \atwo{}, is a system which brings distributed consensus to multi-hop networks implemented on ContikiOS. Our work consists of designing and implementing a clustering scheme, based on the HEED clustering algorithm, to partition the network and create a hierarchical communication medium. We evaluate our work in the Cooja simulator and on the Flocklab testbed, and compare it to the original implementation of \atwo{} using the metrics stability, reliability, latency, and energy usage. Our evaluation shows that we achieve similar reliability to the \atwo{} system but lower stability. However, for the largest network we evaluated, with 200 nodes, we achieve both better latency and lower energy consumption.
 
 % KEYWORDS (MAXIMUM 10 WORDS)
 \vfill
-Keywords: Wireless Sensor Networks, Low Energy, Clustering, HEED, Chaos, \atwo{} Synchrotron
+Keywords: Wireless Sensor Networks, Scalability, Clustering, HEED, Chaos, \atwo{} Synchrotron
 
-\newpage				% Create empty back of side
+\newpage                % Create empty back of side
 \thispagestyle{empty}
 \mbox{}

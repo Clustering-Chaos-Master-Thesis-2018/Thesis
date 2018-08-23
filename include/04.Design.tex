@@ -1,43 +1,56 @@
-\chapter{Design}
+\chapter{Design of the Clustering Process}
 \label{chap:design}
-In this section, we explain the design behind our clustering implementation and put its objectives and properties into context. First, we provide an overview of the clustering algorithm. Second, we go into detail about the clustering service explaining the CH election algorithm. Third, we describe a demotion service which succeeds the clustering service, tidying up suboptimal clusters. Fourth, an explanation of how nodes pick cluster heads from the elected set of CHs. Last, we explain how communication works between CHs and how clusters avoid interfering with each other's communication.
+In this chapter, we explain the design behind our clustering implementation and put its objectives and properties into context. First, we provide an overview of the clustering process. Second, we go into detail about the Clustering service, explain how we design for scalability, and explain the CH election algorithm. Third, we explain of how nodes pick cluster heads from the elected set of CHs. Fourth, we describe a Demote service which runs after the Clustering service to remove suboptimal clusters. Fifth, we explain how communication works between CHs and how clusters avoid interfering with each other's communication. Last, we discuss decisions we make regarding the design and the effect of those decisions.
 
-\section{Clustering Overview}
-Our clustering process consists of several distinct phases. First, the clustering algorithm runs, and every node simultaneously tries to do three things. Learn about the network topology, decide if they should become CH, or select an appropriate cluster to join. Second, each elected CH runs the join service from \atwo{} inside their clusters. Third, all clusters which are deemed to be too small are removed from the network, and all nodes in the removed clusters select another cluster. Fourth, each CH rerun the join service to determine the final set of nodes in their cluster. This process is repeated at some interval of rounds to accommodate for changing energy levels.
+\section{Clustering Process Overview}
+To increase the scalability and lower the energy consumption of \atwo{}, we design and implement a clustering process based on the HEED clustering algorithm \cite{Younis2004-HEED}. The process is responsible for clustering the network, appointing nodes as CHs, and letting nodes join clusters.
 
-When the clustering process is complete, the network executes an application, for example, the Max aggregate application mentioned previously. At this point we split the rounds in \atwo{} into \emph{cluster} and \emph{cluster head} rounds. In cluster rounds, all clusters will use one round to execute an application to completion separately. In cluster head rounds, each CH will propose the result agreed upon by their cluster in the previous round and agree on a global value. This repeats indefinitely alternating between \emph{cluster} and \emph{cluster head} rounds until the clustering process starts again.
+Our clustering process consists of four distinct phases. First, the Clustering service runs, and every node does three things simultaneously: While \textit{(i)} learning about the network topology by collecting statistics about received packets, they also \textit{(ii)} try to become CH, and if they hear another node announcing itself as CH within the configured competition radius they \textit{(iii)} select an appropriate cluster to join. Second, each elected CH runs the Join service from \atwo{} inside their cluster. Third, all clusters which deem themselves too small disband, and all nodes in these clusters select other clusters. Fourth, each CH rerun the Join service to determine the final set of nodes in their cluster. This process is repeated at a certain round interval to accommodate for changing battery levels for nodes in the network.
+
+When the clustering process is complete, the network executes some application, in our case, the Max application. At this point, we split the rounds in \atwo{} into \emph{cluster} and \emph{cluster head} rounds. In cluster rounds, each cluster will separately execute an application to completion. In CH rounds, the CHs execute the same application again, but they remember the information they got in the previous cluster round. What that information is, depends on the application; in the Max application's case, it is the maximal value found in each cluster.
+The process of alternating between \emph{cluster} and \emph{cluster head} repeats until the clustering process starts again.
 
 \section{The Clustering Service}
-In this section, we begin by describing the cluster head election algorithm and how the service forms the clusters. Next, we explain the final phase of the clustering service, executed in the last three rounds of the clustering service. Finally, we detail the different parameters available to configure the behaviour of the clustering process.
+The Clustering service is responsible for clustering the network, and it needs to run first to enable a clustered communication medium. In this section, we describe the design of the Clustering service, how we design for scalability, how the clusters are formed, and the parameters that control the Clustering service.
+
+
+\subsection{Designing for Scalability}
+Because our primary goal is to increase the scalability of the \atwo{} system, a challenge is the packet size restriction of 127 bytes, imposed by the 802.4.15 standard \cite{IEEE-802-15-4}. If an application adds data to the packet and if that data grows linearly with the number of nodes in the network, then the application will quickly reach the packet size restriction. Because the flags field is part of all packets and does grow linearly, we want to prevent it from growing too large. Consequently, we need to cluster the network before running the Join service. Therefore, we design the Clustering service to run without completion flags. Running the Join service after the Clustering service puts the scaling restriction of the flags field locally in each cluster. However, the network cannot perform completion flooding or early turnoff during the Clustering service, as completion is calculated from the flags field. Nonetheless, it is vital that all nodes learn of all CHs since nodes use that information to maintain a flags field for CH rounds.
+
+\subsection{Transmission Policy with Gossiping}
+Without completion flags, nodes cannot determine when consistency has been reached. Therefore, we inspire the transmission policy of the Clustering service from gossiping protocols, to benefit from the high probability of gossiping to disseminate updates successfully. The transmission policy for the Clustering service is that a node should transmit in the next slot if it received a list that contains a CH which the node did not know about, or the list is missing a CH the node does know about; otherwise a node will try to receive data.
 
 
 \subsection{Election of Cluster Heads}
-The core part of our clustering service is the election of cluster heads. The election process is probabilistic and attribute based, derived from HEED \cite{Younis2004-HEED}. Each node uses its residual energy to weigh its starting probability to elect itself as CH. In every round, all nodes have a probability to announce themselves as CH, and they double that probability every round until it reaches $1$; during this time, all nodes have either heard another CH they can join or elected themselves as CH.
+The CH election algorithm is based on the HEED algorithm \cite{Younis2004-HEED}, it is probabilistic and attribute based. The Clustering service is executed over several rounds, and the algorithm is divided into two phases: the main phase, shown in \cref{alg:ch-decision}, and the final phase, shown in \cref{alg:ch-final}. The main phase probabilistically elects a set of CHs based on their residual energy, nodes with more residual energy has a higher chance of becoming a CH. In this phase, every node also chooses a cluster to join. The final phase ensures that CHs cover the whole network.
 
-The clustering service is executed over several rounds during which it converges on a stable set of cluster heads in constant time, ensured by HEED \cite{Younis2004-HEED}. The number of consecutive clustering service rounds to form stable clusters requires configuration before the network is started since it depends on the topology and the lower bound of the nodes starting probability to become cluster head.
+In every round, all nodes have set a probability to announce themselves as CH, and they double that probability at the end of every round until it reaches $1$; at that point, each node has either heard another CH they can join or elected themselves to be CH. The algorithm ensures that a stable set of CHs is elected in constant time \cite{Younis2004-HEED}.
 
-To calculate the initial probability ($CH_{prob}$) for every node to announce themselves as CH we use the formula in \cref{eq:ch-election-probability} taken from HEED \cite{Younis2004-HEED},
+Nodes calculate their initial probability ($CH_{prob}$), to announce itself as CH, according to
 
 \begin{equation}
-    CH_{prob} = C_{prob} * \frac{E_{residual}}{E_{max}}.
+    CH_{prob} = C_{prob} * \frac{E_{residual}}{E_{max}}
     \label{eq:ch-election-probability}
 \end{equation}
 
-Where $C_{prob}$ is an initial probability which is used to get the process started, it does not have any impact on the final number of cluster heads \cite{Younis2004-HEED}. $E_{residual}$ is the residual energy of the node and $E_{max}$ is the maximum possible energy of the node. Furthermore, this probability is bounded by a constant lower bound, $p_{min}$, which ensures that $CH_{prob}$ reaches 1 in constant time.
+taken from HEED \cite{Younis2004-HEED}. $C_{prob}$ is an initial probability which is used to get the process started; it does not have any impact on the final number of cluster heads \cite{Younis2004-HEED}. $E_{residual}$ is the residual energy of the node and $E_{max}$ is the maximum energy of the node. Furthermore, $CH_prob$ is bounded by $p_{min}$, a constant lower bound inversely proportional to $E_{max}$, which ensures that $CH_{prob}$ reaches 1 in constant time.
 
-The algorithm that decides if a node should elect itself as a CH is split into two phases. The first phase executes \cref{alg:ch-decision} at the end of each cluster service round and it stretches throughout all except the last three cluster service rounds. During the last three rounds, the final phase, shown in \cref{alg:ch-final}, is executed instead; we explain the second phase in detail in \cref{subsec:final-phase}. The first phase probabilistically elects a set of CHs purely based on their residual energy, nodes with higher residual energy has a higher chance of becoming CH. In this phase, every node also chooses a cluster to join.
+The number of consecutive Clustering service rounds required to form stable clusters differs between networks. It depends on the network topology, the diameter of the network, and the lower bound on the initial probability. For example, a sparse network requires more rounds than a dense network.
 
-There are two phases for a CH in our clustering algorithm. Tentative and final. A CH is tentative until its probability of becoming CH reaches 1, when it becomes final. This distinction is made to prune out nodes which have a lower residual energy. Since the clustering service runs for a fixed amount of rounds, if a CH is still tentative when the clustering service reaches the final phase, it will be demoted to a normal node. 
+There are two states for a CH in the HEED algorithm: tentative and final. A CH is tentative until its probability of becoming CH reaches 1, then it becomes final. This distinction is made to prune out nodes which have lower residual energy. Since the Clustering service runs for a fixed number of rounds, if a CH is still tentative when the Clustering service begins the final phase and it can find another cluster to join, it will be demoted and join that cluster. 
 
-Furthermore, to avoid having too many CHs, we control the number of CHs in the following way. A node is only allowed to announce itself as CH with probability $CH_{prob}$ if they have not seen another CH within their competition radius or they have seen another CH but have a lot of neighbours, as can be seen in \cref{alg:ch-decision} at \cref{valid-clusters-not-empty}. Competition radius is a distance metric measured in hops that a node uses to filter out CHs that are too far away. However, two nodes can both independently and at the same time make the decision to become CH, even though they are within each others competition radius. To mitigate this effect, the cluster heads announce themselves in a random slot in the first half of the next round. This gives the CHs a chance to hear another nearby CH before they announce themselves, and ensures that they do not announce themselves too late in the round to not be noticed by other CHs. If they hear another valid CH, they join that cluster instead of announcing themselves.
+Furthermore, we control the number of nodes that can become CHs in two ways. As can be seen in \cref{alg:ch-decision} at \cref{alg-heed-valid-clusters-not-empty}, a node is only allowed to announce itself as CH with probability $CH_{prob}$ if either of two things holds. First, taken from HEED, a node must not have seen another CH within their competition radius (measured in hops). Second, further defined by us, a node may still elect itself if the $neighbourRatio$, that is, the number of neighbours divided by the number of CHs within a nodes competition radius, is larger than the parameter \emph{nodes per cluster ratio}. We explain this parameter in more detail in \cref{sec:clustering-parameters}, but its primary purpose is to make dense networks sparser, thus decreasing interference.
+
+However, if two nodes decide to become CH in the same round, then both of them will begin to announce themselves at the start of the next round. This may cause two nodes within each others competition radii to become CHs; to decrease the risk of this, nodes will wait until a random slot during the first half of the next round before they begin to announce themselves. This gives another newly elected CH a chance to hear another nearby CH, which they can join before they announce themselves. We limit this random back off to the first half of a round to ensure that the CHs do not announce themselves too late not to be noticed by other CHs.
 
 \begin{algorithm}[bt]
-\caption{Shows how a node elects to announce itself as cluster head.}
+\caption{The repeat phase adaptation of the HEED algorithm. It shows how a node elects to announce itself as cluster head. The algorithm is adapted for \atwo{} in two ways. We utilise our parameter $nodesPerClusterRatio$ at \cref{alg-heed-valid-clusters-not-empty} and set the announcement slot at \cref{alg-heed-tentativeAnnouncementSlot}.}
 \label{alg:ch-decision}
 \begin{algorithmic}[1]
+%\setcounter{ALC@unique}{0}
 \Procedure{heed\_repeat}{}
-\If{$prevCH_{prob} \leq 1.0$}
-    \If {$validCHList \neq \emptyset \text{ or } neighbourRatio \leq nodesPerClusterRatio$} \label{valid-clusters-not-empty}
+\If{$prevCH_{prob} \leq 1$}
+    \If {$validCHList \neq \emptyset \text{ or } neighbourRatio > nodesPerClusterRatio$} \label{alg-heed-valid-clusters-not-empty}
         \State $myCH \gets pickBestCH(validCHList)$
         \If {$myCH = myNodeID$}
             \If{$CH_{prob} = 1.0$}
@@ -46,14 +59,14 @@ Furthermore, to avoid having too many CHs, we control the number of CHs in the f
                 \State $CHState \gets \text{TENTATIVE}$
             \EndIf
         \EndIf
-    \ElsIf {$CH_{prob} = 1.0$}
+    \ElsIf {$CH_{prob} = 1$}
         \State $CHState \gets \text{FINAL}$
-    \ElsIf {$random(0, 1.0) \geq CH_{prob}$}
-        \State $announcementSlot \gets random(1, maxAnnouncementSlot)$
+    \ElsIf {$random(0, 1) \geq CH_{prob}$}
+        \State $announcementSlot \gets random(1, maxAnnouncementSlot)$ \label{alg-heed-tentativeAnnouncementSlot}
     \EndIf
     
     \State $prevCH_{prob} \gets CH_{prob}$
-    \State $CH_{prob} \gets 2CH_{prob}$
+    \State $CH_{prob} \gets min(2CH_{prob},1)$
 \EndIf
 \EndProcedure
 \end{algorithmic}
@@ -61,21 +74,21 @@ Furthermore, to avoid having too many CHs, we control the number of CHs in the f
 
 \subsection{The Final Phase}
 \label{subsec:final-phase}
-The final phase in the clustering service executes during the last three rounds of the clustering service. It performs two important functions, demoting CHs that are only \emph{tentative}, and ensuring that CHs cover the whole network. We show the pseudo code for the final phase in \cref{alg:ch-final}.
+HEED's final phase executes during the last three rounds of the Clustering service. It performs two important functions, it demotes tentative CHs and ensures that CHs cover the whole network. We show the pseudo code for the final phase in \cref{alg:ch-final}.
 
-The final phase serves the same purpose in both our algorithm and HEED but CHs are tentative for different reasons. In HEED the only reason a CH is tentative in the final phase is if it announced itself as CH and then found another CH that it determined was a lower cost to join than being CH itself, according to some cost function. In HEED, the cost function is based on the communication cost between nodes and the CHs \cite{Younis2004-HEED}. In our algorithm, a CH is instead tentative in the final phase if it does not have enough energy to reach a probability of $1.0$ in time before the final phase starts. 
+The final phase serves the same purpose in both our algorithm and HEED, but CHs are tentative for different reasons. In HEED, the only reason a CH is tentative in the final phase is if it announced itself as CH and then found another CH with a lower cost to join, according to a cost function. In HEED, the cost function is based on the communication cost between nodes and the CHs \cite{Younis2004-HEED}. However, in our algorithm, a CH is tentative in the final phase if it does not have enough energy to reach a probability of $1.0$ before the final phase begins. Additionally, the final phase ensures that the whole network is covered. As can be seen in \cref{alg:ch-final}, if a node does not consider any CH to be valid, i.e. exist within the competition radius, it will announce itself as CH; this guarantees that cluster heads cover the whole network.
 
-Additionally, the final phase ensures that the whole network is covered. As can be seen in \cref{alg:ch-final}, if a node cannot pick any CH that it considers valid it will announce itself as CH. This guarantees that cluster heads cover the whole network. However, there is a drawback to this design which can happen if either the parameters to the clustering service are poorly configured, or we are applying clustering to a network not suited for clustering, such as very sparse networks. For example, if the clustering service is scheduled for too few rounds, so that no CH can reach $CH_{prob} = 1.0$ then every node in the network will consider itself uncovered in the final phase and announce themselves as CHs. Having a network with only CHs is equivalent to having a network with no clustering at all and will only waste energy and time since the network will still interleave cluster and cluster head rounds.
+
 
 \begin{algorithm}[bt]
-\caption{The final phase of the clustering algorithm.}
+\caption{The final phase of the clustering algorithm. The only edit from the original HEED final phase is the usage of $pickBestCH$, which is our definition of the cost function that the HEED algorithm requires.}
 \label{alg:ch-final}
 \begin{algorithmic}[1]
 \Procedure{heed\_final\_phase}{}
     \If{$CHState \neq \text{FINAL}$}
-        \If {$validCHList \neq \emptyset$}
+        \If {$CHList \neq \emptyset$}
+            \State $myCH \gets pickBestCH(CHList)$
             \State $CHState \gets \text{NOT\_CLUSTER\_HEAD}$
-            \State $myCH \gets pickBestCH(validCHList)$
         \Else
             \State $CHState \gets \text{FINAL}$
         \EndIf
@@ -86,56 +99,39 @@ Additionally, the final phase ensures that the whole network is covered. As can 
 
 \subsection{Configuration Parameters}
 \label{design:configuration-parameters}
-In this section we explain the different parameters the clustering service takes into account when deciding which nodes are cluster heads, the parameters are listed in \cref{table:configuration-parameters}. We evaluate the effect of changing these parameters in \cref{chap:evaluation}.
+In this section, we describe the parameters that change the behaviour of the Clustering service: competition radius, minimum cluster size, and nodes per cluster ratio. We evaluate the effect of changing these parameters for different network topologies in \cref{chap:evaluation}.
 
-\paragraph*{Competition radius,} measured in hop count, is a measurement of how far away a cluster head can be for a node to join that cluster head. In a small and dense network, a small competition radius will make the network less dense by partitioning it into a higher number of clusters and thus lower the number of packet collisions. On the other hand, in a large and sparse network, a high competition radius will keep the number of cluster heads down to ensure that the clusters do not get too small. 
-
-
-\paragraph*{Minimum cluster size} is the number of nodes, including the cluster head, that has to be a part of the cluster for it to be considered valid. If a cluster has too few nodes, one of the three following scenarios is likely to have occurred. First, the network is small or very sparse, if the network only contains a few nodes clustering could be detrimental to the performance and reliability of the network and should be turned off. Second, the cluster head can be close to the edge of the network or far away from other nodes. Third, the cluster head can be close to another cluster head that most of the nodes around them elected to join instead. In both the second and the third case our algorithm elected a bad cluster head which can be pruned relatively easily when the clustering process is complete. We explain how this pruning is done in \cref{sec:demoting-cluster-heads}.
+\paragraph*{Competition radius,} measured in hop count, is a measurement of how far away a node can be from a CH and still join that CH. In a small and dense network, a small competition radius will make the network less dense by partitioning it into many clusters and thus lowering the number of packet collisions. On the other hand, in a large and sparse network, a high competition radius will keep the number of cluster heads low to ensure that the clusters do not get too small. 
 
 
-\paragraph*{Nodes per cluster ratio} is not a strict limit on the number of nodes in a cluster. Instead, it is a limit on the number of cluster heads that can announce themselves depending on the number of neighbours they have. The purpose of this parameter is to make dense networks sparser. Without this parameter, a node that has heard of another cluster head within its competition radius will never announce itself as a cluster head. With this parameter a node with more neighbours than the \emph{nodes per cluster ratio} will still be able to announce itself, dividing the neighbours between itself and the other CH, which makes the network less dense.
+\paragraph*{Minimum cluster size} is the number of nodes, including the CH that has to be a part of the cluster for it to be considered valid. If a cluster has few nodes, one of the three following scenarios is likely to have occurred. First, the network could have been small or sparse, clustering such a network makes it even more sparse which could damage reliability and stability. Second, the CH could be poorly located, for example, close to the edge of the network or far away from other nodes. Third, the CH could be close to another CH that most of the nodes around them chose to join instead. In both the second and the third case our algorithm elected a bad CH which can be pruned relatively easily when the clustering process is complete. In the first scenario, it is hard for small and sparse networks to benefit from clustering.
 
-\begin{table}[bt]
-\centering
-\caption{List of configurable parameters for the clustering service.}
-\label{table:configuration-parameters}
-\begin{tabular}{l}
-\textbf{Parameter name}      \\ \hline
-Competition Radius      \\
-Minimum Node Count      \\
-Nodes Per Cluster Ratio
-\end{tabular}
-\end{table}
 
-\section{Demotion of Cluster Heads}
-\label{sec:demoting-cluster-heads}
-When a cluster head is demoted it becomes a normal node and all other nodes that have joined its cluster, including itself, finds another cluster to join. There are two ways a CH can be demoted.  First, CHs will automatically be demoted at the beginning of the clustering service. Second, if a node announces itself as CH but fewer nodes than \emph{minimum cluster size} join its cluster it will also demote itself.
+\paragraph*{Nodes per cluster ratio,} tries to enforce a maximum cluster size to make a dense network artificially sparser. It is not a strict limit on the number of nodes in a cluster. Instead, it is a limit on the number of CHs that can announce themselves depending on the number of neighbours they have. A node with more neighbours than \emph{nodes per cluster ratio} will still be able to announce itself even if it has heard from another CH within its competition radius, dividing the neighbours between itself and other CHs, which makes the network less dense.
 
-The clustering service is designed to be run periodically to adapt to changes in the network, such as node deaths and nodes depleting their energy faster than others. To facilitate this, if there are any previous CHs when the clustering service starts they are demoted. We also reset all statistics collected before this point to give nodes that might have depleted their energy faster than others a chance to not be chosen as CH again.  
-
-Additionally, the demote service is designed to be run after the consistent group membership protocol provided by \atwo{} \cite{a2-introduction-paper} has converged on a result for each cluster. The purpose of the demote service is to enforce a \emph{minimum cluster size}. At this point, each CH knows how many nodes joined their cluster and if the number of nodes falls below the threshold \emph{minimum cluster size} they will announce themselves as demoted and any node that joined its cluster will have to find a new cluster.
-
-The problem the demote service tries to mitigate is when cluster heads are either very far from other nodes or close to other cluster heads. Due to the probabilistic nature of HEED, there is no guarantee that these CHs do not announce themselves if they have high residual energy. We evaluate the effect of this service and different values of \emph{minimum cluster size} in \cref{chap:evaluation}.
-
+%\begin{table}[bt]
+%\centering
+%\caption{List of configurable parameters for the Clustering service.}
+%\label{table:configuration-parameters}
+%\begin{tabular}{l}
+%\textbf{Parameter name}      \\ \hline
+%Competition Radius      \\
+%Minimum Cluster Size      \\
+%Nodes Per Cluster Ratio
+%\end{tabular}
+%\end{table}
 
 \section{Joining Clusters}
-The primary objective of a node is to choose a cluster head as close as possible, to do this we define a function that tries to calculate the cluster that requires the least cost to join. Since a typical WSN is an ad hoc network, we have to gather information about the network while our clustering service is running. We keep track of two different metrics to estimate how close other nodes and cluster heads are to each node. All nodes keep track of the number of packets they receive from their neighbours; a neighbour is a node which can be reached in a single hop. In addition, the nodes keep track of the number of hops required to reach each cluster head. The nodes will only consider cluster heads that have a hop count smaller than the competition radius and then chose the cluster head that they received the most packets from if there exist several valid cluster heads.
-
-We argue that the number of received packets from a node is a reasonable approximation of the distance to that node, due to the capture effect \cite{Lee2007-capture-effect}. The signal strength decreases as the distance increases between two nodes and the capture effect state that if there is a sufficient difference in signal strength between two packets the higher signal packets will always be received correctly and the other ignored. This effect results in more packets received from nodes closer than far away.
-
-However, the nodes only count the number of received packets from direct transmits. A two-hop (or further) packet receive count is not implemented. This means that when networks run with higher competition radii, if no CH is in one-hop range for a node, then that node will choose a CH randomly from all CHs which are closest to it since the nod has no statistics on the number of packets from the CHs.
-
-In \cref{alg:ch-filter-cluster-heads} we show the pseudo code that determines which cluster head a node picks when joining a cluster. The algorithm takes into account two metrics, the distance (hop count) to the CH and the number of packets received from it. A node can only choose a CH within the defined competition radius. Additionally, a node picks the cluster head from which it has received the most packets.
+The primary objective of a node is to choose a cluster head that requires the least cost to join. To do this, we define a function that tries to find the CH that is closest to that node. Since a typical WSN is an ad hoc network, we have to gather information about the network while our Clustering service is running. Each node keeps track of two metrics to estimate how close other nodes are: The number of packets they receive from their neighbours (nodes that can be reached in a single hop) and the number of hops required to reach each CH. A node only considers CHs that have a hop count smaller than the competition radius and then chose the CH that they received the most packets from if there exist several valid CHs. We show the pseudo code for this process in \cref{alg:ch-filter-cluster-heads}.
 
 \begin{algorithm}
-\caption{Pick the best cluster head according to our cost function.}
+\caption{Our cost function for picking the best cluster head.}
 \label{alg:ch-filter-cluster-heads}
 \begin{algorithmic}[1]
 \Procedure{pickBestCH}{}
-    \ForAll {$CH \in clusterHeadList$}
+    \ForAll {$CH \in CHList$}
         \If {$CH.hopCount \leq competitionRadius$}
-            \If {$CH.received\_packets = max(received\_packets)$}
+            \If {$CH.receivedPackets = max(CHList.receivedPackets)$}
                 \State $chosenCH \gets CH$
             \EndIf
         \EndIf
@@ -146,29 +142,34 @@ In \cref{alg:ch-filter-cluster-heads} we show the pseudo code that determines wh
 \end{algorithm}
 
 
+\section{Demotion of Cluster Heads}
+\label{sec:demoting-cluster-heads}
+When a cluster head is demoted it becomes a normal node and all other nodes that have joined its cluster, including itself, joins another cluster. There are two ways a CH can be demoted: CHs are automatically demoted at the beginning of the Clustering service and if a node announces itself as CH, but fewer nodes than \emph{minimum cluster size} join its cluster, it will also demote itself.
+
+The Clustering service is designed to be executed periodically by the network to adapt to changes, such as nodes dying or nodes depleting their energy faster than others. To facilitate this, all previous CHs are demoted when the Clustering service starts. The Clustering service does not take into account previous clusterings of the network and does not rely on data collected when the network is executing applications.
+
+Additionally, the demote service is designed to be run after the consistent group membership protocol, provided by \atwo{} \cite{a2-introduction-paper}, has converged on a result for each cluster. The purpose of the demote service is to enforce a \emph{minimum cluster size}. At this point, each CH knows how many nodes have joined their cluster. If the number of nodes in a cluster falls below the threshold \emph{minimum cluster size} the CH will announce itself as demoted.
+
+
+
+
+
 \section{Communication}
-There are two separate instances of communication happening in a clustered network. The communication inside a cluster, intra-cluster communication; and the communication between cluster heads, inter-cluster communication. The communication primitive is similar to the original \atwo{} design with some modifications.
+There are two separate instances of communication happening in a clustered network: intra-cluster and inter-cluster communication. The communication works similarly to the original \atwo{} design with some modifications.
 
 
 \subsection{Intra-cluster}
-The intra-cluster communication is the communication that happens within a cluster between one CH and all the nodes that have joined its cluster. During this phase of the protocol, the CH acts as the initiator in the cluster, and it is responsible for initiating the communication and collecting the final result of the application running within the cluster. We use the channel hopping functionality provided by the \atwo{} Synchrotron \cite{a2-introduction-paper} to make each cluster jump between channels in a sequence to minimise foreign interference that can be caused by a single frequency band being overused. However, we also split each cluster into different channels to minimise interference between clusters. Each cluster applies a unique offset to their channel hopping sequence so that the clusters all use different channels.
-
-The number of clusters that we can split in this way is limited by the number of available radio channels, which currently is 16. If there exist more clusters than channels, the clusters will overlap. We do not currently take any care to split the channels between clusters in any way but having more clusters will not cause the communication to break down since we filter out packets from other clusters. We explain in more detail how this is done in \cref{subsec:separating-the-clusters}.
+The intra-cluster communication happens within a cluster, during this phase, the CH acts as the initiator for its cluster. We use the channel hopping functionality provided by the \atwo{} Synchrotron \cite{a2-introduction-paper} to make all nodes jump between radio channels in a sequence to minimise foreign interference. However, we also split all clusters into different channels to minimise interference between clusters. To accomplish this, each cluster applies a unique offset to their channel hopping sequence. The number of clusters that we can split in this way is limited by the number of available radio channels, which currently is 16. If there exist more clusters than channels, the clusters will overlap. However, the communication will still work since clusters ignore packets from other clusters.
 
 
 \subsection{Inter-cluster}
-The inter-cluster communication is the communication between cluster heads that takes place during CH rounds. During a CH round, the CHs propose the maximum value that its cluster has agreed on while all other nodes act as forwarders.
-
-CH rounds are interleaved with cluster rounds which means that each cluster will first agree on a maximum local value and then the CHs will agree on a maximum global value in the next round. We decided to use separate rounds for this communication since that was the most straightforward way of getting the CHs to communicate, it is a limitation to our design. By introducing the CH rounds, we add overhead to the communication since the network has to perform two rounds instead of one to agree on a maximum value.
-
-Another component to the inter-cluster communication is the forwarders. During a CH round, all normal nodes act as forwarders; they do not propose any values of their own, and we do not count their participation when calculating the progress of the network. Forwarders are required since our algorithm can only guarantee an upper bound of 2 on the hop count between cluster heads with the smallest competition radius of 1.
+The inter-cluster communication takes place during CH rounds in which the CHs propose the aggregate value that its cluster agreed upon in a previous cluster round. All non-CH nodes act as forwarders and do not propose any values of their own, they only forward packets according to the transmission policy. Their participation is not counted when the completion of the network is calculated. Forwarders are required since our process can only guarantee an upper bound of 2 on the hop count between cluster heads with the lowest competition radius.
 
 
 \section{Clustering Objectives and Properties}
-Since we can categorise all clustering algorithms we have come across by the properties discussed in \cref{subsec:background:clustering-algorithm-categorisation} we begin by listing the clustering objectives and properties we wish to fulfil and motivate why we have made those choices.
+In this section, we list the clustering objectives we design for and motivate why we make those choices. We also classify our algorithm according to the cluster, cluster head, and clustering process properties presented in \cref{subsec:background:clustering-algorithm-categorisation}.
 
-
-We have several primary and secondary objectives for our clustering implementation, and they are listed in \cref{fig:primary-and-secondary-objectives}. Scalability is the first objective, both Chaos and the \atwo{} protocol have a restriction on the maximum number of nodes that can participate in the network \cite{chaos-introduction-paper}. Clustering can improve scalability by partitioning the network into smaller subsets. Our second primary objective is maximal network lifetime, which is a common challenge in WSNs \cite{Afsar2014-clustering-survey, NikolaosA.Pantaziz2007-wsn-power-survey} and clustering is known to increase the efficiency of a network which directly affects its lifetime. Finally, load balancing is our last primary objective. Load balancing works by moving the CH role between different nodes, which increases the time until the first node death. Prolonging the time until first node death occurs directly increases the lifetime of the network.
+In \cref{fig:primary-and-secondary-objectives} we list the primary and secondary objectives for our clustering design. Scalability is the first objective since both Chaos and \atwo{} have a restriction on the maximum number of nodes that can participate in the network \cite{chaos-introduction-paper}. Clustering improves scalability by partitioning the network into smaller subsets. Our second primary objective is maximal network lifetime, which is a common challenge in WSNs \cite{Afsar2014-clustering-survey, NikolaosA.Pantaziz2007-wsn-power-survey} and clustering increases the efficiency of a network which directly affects its lifetime. Finally, load balancing is our last primary objective. Load balancing is achieved by moving the CH role between different nodes, which increases the time until the first node death. Prolonging the time until the first node death directly increases the lifetime of the network.
 
 \begin{table}[bt]
     \centering
@@ -189,26 +190,76 @@ We have several primary and secondary objectives for our clustering implementati
 \caption{Our properties related to clusters, cluster heads and the clustering process.}
 \label{table:clustering-design-properties}
 \begin{tabular}{ll}
-\multicolumn{1}{c}{\textbf{Cluster properties}}             & \multicolumn{1}{c}{\textbf{Cluster head properties}} \\ \hline
+\multicolumn{1}{c}{\textbf{Cluster Properties}}             & \multicolumn{1}{c}{\textbf{Cluster Head Properties}} \\ \hline
 \multicolumn{1}{l|}{Unequal cluster size}                   & Stationary nodes                                     \\
 \multicolumn{1}{l|}{Variable cluster count}                 & Homogeneous nodes                                    \\
 \multicolumn{1}{l|}{Single/multi-hop intra-cluster communication} & CH takes on normal duties                            \\
 \multicolumn{1}{l|}{Multi-hop inter-cluster communication}  & \textbf{}                                            \\
                                                             &                                                      \\
-\multicolumn{2}{c}{\textbf{Clustering process properties}}                                                         \\ \hline
+\multicolumn{2}{c}{\textbf{Clustering Process Properties}}                                                         \\ \hline
 Distributed clustering process                              & Proactive nature                                     \\
 Attribute based CH election                                 & Dynamic clustering                                   \\
 Constant algorithm complexity                               &                                                     
 \end{tabular}
 \end{table}
 
-Additionally, we have two secondary objectives. Collision avoidance occurs because the clusters will communicate on different radio channels, which reduces potential interference between the clusters. Furthermore, we gain increased connectivity since the requirement for the network to be considered connected is weakened. That is, each node only needs to have a connection with its cluster and a CH require a connection with its cluster and the other CHs.
+Additionally, we have two secondary objectives: Collision avoidance and increased connectivity. Collision avoidance occurs because the clusters communicate on different radio channels, which reduces interference. Furthermore, we gain increased connectivity since the requirement for the network to be considered connected is weakened. That is, each node only needs to have a connection with its cluster, and a CH only requires a connection with its cluster and the other CHs.
 
 
-Furthermore, our clustering implementation fulfils several properties, listed in \cref{table:clustering-design-properties}. First,  we will have unequal cluster sizes. More specifically, we will enforce a minimum cluster size by only letting a node announce itself as CH if it has a minimum number of followers. Furthermore, we enforce a nodes per cluster ratio; however, this parameter is dependent on network density. The second parameter is variable cluster count, the number of clusters will depend on many variables such as network topology and competition radius. Third, the intra-cluster communication will depend on the competition radius. If competition radius is one, the nodes will have a single-hop communication with the cluster head. However, it is possible for two nodes in the same cluster to have multi-hop communication. For example, the two nodes might require the CH to route communication between them. Finally, inter-cluster communication will be multi-hop. CHs will communicate with the normal \atwo{} protocol but will require non-CH nodes to forward their messages during CH-rounds.
+Furthermore, our clustering design fulfils several properties, listed in \cref{table:clustering-design-properties}. First, we have unequal cluster sizes; we do not enforce that all clusters need to be equal in size. However, we enforce a minimum cluster size by demoting CHs if they have less than a certain number of followers. We also enforce a ratio for the number of nodes per cluster, but this parameter depends on network density. The second parameter is variable cluster count, the number of clusters depends on many variables such as network topology and competition radius, also we use a probabilistic approach. Third, if the intra-cluster communication is single or multi-hop depends on the competition radius. If the competition radius is one, nodes have a single-hop communication with their cluster head. However, it is possible for two nodes in the same cluster to have multi-hop communication. For example, two nodes might require the CH to route communication between them. Finally, inter-cluster communication is multi-hop. CHs communicate normally but require non-CH nodes to forward their messages during CH rounds.
 
-Similarly, we have cluster head properties. First, our design will only focus on stationary nodes. Second, all nodes are homogeneous. However, if we deploy a node with more resources (such as an improved battery) with our protocol, it will have an advantage in our election process since the election favours nodes with higher battery levels. Finally, the role of the CH in our design will be to perform the same work as ordinary nodes in addition to the work required by a CH. Additionally, normal nodes perform a forwarding service for the CHs during CH-rounds.
+Moreover, we have cluster head properties. First, our design focus on stationary nodes. Second, all nodes are homogeneous. However, if we deploy a node with more resources (such as an improved battery) with our process, it will have an advantage in the election process since nodes with a higher energy level are more likely to become CHs. Finally, the role of a CH is to perform the same work as ordinary nodes in addition to the work required by a CH.
 
-Finally, we have properties for the clustering process. First,  each node executes the clustering process in a distributed fashion; this will lead to a more scalable network. Second, our election process will be attributed based and take into account attributes such as residual energy to elect CHs to work towards maximising the network lifetime. Third, we will have a constant algorithm complexity; this is because we use local decisions to elect CHs. Fourth, the clustering process will be proactive to accommodate \atwo{}'s ability to schedule multiple applications in the network. Lastly, since our clustering process is attribute based it will be dynamic, meaning it takes into account the current condition of the network.
+Finally, we have clustering process properties. First, each node executes the clustering process in a distributed fashion; this leads to a more scalable network compared to a centralised process. Second, our election process is attribute based and takes into account the residual energy of nodes to elect CHs, to work towards maximising the network lifetime. Third, the complexity of the election algorithm is constant; this is because we use local decisions to elect CHs. Fourth, the nature of the clustering process is proactive to accommodate \atwo{}'s ability to schedule multiple applications in the network. Lastly, our clustering process is dynamic since it is attribute based; the process takes into account the current condition of the network, such as the residual energy of the nodes.
 
 
+\section{Discussion}
+\begin{newtext}
+In this section, we present our discussion on the design we describe in this chapter. We discuss how our clustering process is similar to a gossiping protocol, as well as some decisions we make regarding the design, and the impact of these decisions.
+\end{newtext}
+\subsection{Comparison of the Clustering service's Communication to Gossiping}
+
+
+\begin{newtext}
+Because the Clustering service does not have a flags field, nodes cannot know when they have a complete picture of the CH list. However, we argue that our design of the Clustering service is sufficiently similar to a gossiping protocol to benefit from the high success rate and eventual consistency which gossiping protocols posses. To compare with a gossiping protocol, we argue for similarities between our transmission policy and the push and pull actions.
+
+
+Every transmission from a node is always a push action, but it could simultaneously be a pull action if the node is susceptible to one or more of its neighbours. It is a push action since a node includes all of the CHs it knows in each packet it sends. However, there is no guarantee that the node is infective to any of the receiving nodes since they might already know all of its information. Furthermore, the transmission could also be a pull action since a receiving node might have knowledge which the transmitter does not have. The receiver will then in the next slot perform a push action, and the previous transmitter will attempt to receive the push.
+
+
+However, a difference to traditional gossiping is that the push and pull actions are not targeted at a single node. Instead, a transmission is often received by many neighbouring nodes, because of the wireless communication medium. The concept of pushing updates to multiple nodes at the same time is called multi-casting, and only being able to push updates to a subgroup, such as the neighbours of a node, is called subgroup gossiping. Additionally, while subgroup gossiping can be restricting since updates need to propagate through the network via neighbouring nodes, multi-casting is beneficial compared to peer-to-peer updates since it could allow an update to spread faster. Furthermore, research into multi-cast subgroup gossiping has shown that there exist good lower bounds, which depend on the underlying graph \cite{Liestman1984-gossiping-conference-calls}.
+
+
+Consequently, assuming we can enforce that there always exists at least one update which only the initiator knows about at the start of every round, which we discuss in \cref{subsec:discussion-clustering-without-completion-flags}. Then the transmission policy will ensure that the update triggers communication throughout the network and nodes with updates of their own will have an opportunity to push their information which propagates throughout the network due to the transmission policy. From these arguments, we conclude that the Clustering service is very similar to a gossip protocol. This ensures that the Clustering service benefits from a gossip protocols high chance of disseminating updates to the network and that it has eventual consistency, even without completion flags.
+\end{newtext}
+
+\subsection{Limiting the Number of Cluster Heads}
+\begin{newtext}
+In our design, we randomise the slot in which a node starts announcing itself as CH to limit the number of CHs that are neighbours to each other. Because nodes double the probability to announce themselves as CH every round, we can go from a relatively low probability to a high probability in the span of one round. For example, a node which has $CH_{Prob} = 35\%$ in a round, will have $CH_{Prob} = 70\%$ in the next round, which could lead to many nodes announcing themselves at the same time.
+
+We cannot guarantee that this mechanism fixes the problem, it relies on two things to work; that the two nodes that announced themselves in the same round randomised two numbers sufficiently far apart from each other and that successful communication happens between the nodes between those two slots. Additionally, the Clustering service does not take into consideration which node would be a better CH, which means that this mechanism could cancel election of nodes better suited to be CHs. However, since this mechanism is only used for nodes which are neighbours or close to neighbours, depending on the competition radius, the CHs that are removed should be relatively similar.
+\end{newtext}
+
+
+\subsection{The Final Phase}
+\begin{newtext}
+The final phase of the clustering process almost identical to the final phase in HEED. However, there is one difference, CHs are tentative if they have too low residual energy. This is because we do not model the cost for a node to be CH, which means a node cannot tell if it would be better for it to demote itself and join another CH instead. 
+
+Furthermore, there is a drawback to the final phase which can happen if either the parameters to the Clustering service are poorly configured, or we are applying clustering to a network not suited for clustering, such as very sparse networks. For example, if the Clustering service is not scheduled for enough rounds, such that no CH can reach $CH_{prob} = 1.0$, then every node in the network will consider itself uncovered in the final phase, and announce themselves as CHs. Having a network where all nodes are CHs is comparable to having a network with no clustering, which will only waste energy and time since the network will still interleave CH rounds with cluster rounds.
+\end{newtext}
+
+\subsection{The Cost Function}
+\begin{newtext}
+Our cost function tries to find the closest CH by counting the number of packets received from all nodes. All nodes will choose the CH they have received the most packets from. 
+
+We argue that the number of received packets from a node is a reasonable approximation of the distance to that node, due to the capture effect \cite{Lee2007-capture-effect}. The signal strength decreases as the distance increases, and a difference in signal strength is integral for the capture effect to apply. Consequently, nodes that are closer to each other will more often correctly decode each other's packets than nodes that are far away.
+
+However, since we can only count packets from neighbours, this cost function does not work when the competition radius is higher than one. Since no direct transmit can be made from a node that has a hop count two or higher, nodes which do not have a CH as their neighbour will have to choose a CH at random from the closest CHs in the network. If the node has a bad connection to that cluster, it will eventually trigger a resynchronisation and drop out of it.
+\end{newtext}
+
+\subsection{Separating Cluster Communication}
+\begin{newtext}
+Our design separates intra- and inter-cluster communication with cluster and CH rounds respectively; this is convenient as it enables scheduling of cluster rounds more often than CH rounds. A usage of this is to let the CHs aggregate data from its cluster during multiple rounds before a single CH round is scheduled in which all the aggregated data could be forwarded to other CHs or a base station. Another reason for having CH rounds and cluster rounds is to only have one type of communication for each cluster during a single round, either inter- or intra-cluster.
+
+In contrast, it could be possible to switch between intra- and inter-cluster communication within a single round. However, doing so bring the challenge of keeping the network synchronised when we switch from many initiators to one; this is a challenge since each cluster may require differently long before switching to inter-cluster communication, and would thus require that some clusters sleep until they reach a predetermined slot.
+\end{newtext}

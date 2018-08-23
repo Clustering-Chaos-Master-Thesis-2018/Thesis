@@ -320,3 +320,104 @@ url = {http://dx.doi.org/10.1016/j.adhoc.2008.06.003},
 volume = {7},
 year = {2009}
 }
+
+@book{Tanenbaum:2006:DSP:1202502,
+ author = {Tanenbaum, Andrew S. and Steen, Maarten van},
+ title = {Distributed Systems: Principles and Paradigms (2Nd Edition)},
+ year = {2006},
+ isbn = {0132392275},
+ publisher = {Prentice-Hall, Inc.},
+ address = {Upper Saddle River, NJ, USA},
+} 
+
+@article{Demers1987-gossiping-first-paper,
+abstract = {: When a database is replicated at many sites, maintaining mutual consistency among the sites in the face of updates is a significant problem. This paper describes several randomized algorithms for distributing updates and driving the replicas toward consistency. The algorithms are very simple and require few guarantees from the underlying communication system, yet they ensure that the effect of every update is eventually reflected in all replicas. The cost and performance of the algorithms are tuned by choosing appropriate distributions in the randomization step. The algorithms are closely analogous to epidemics, and the epidemiology literature aids in understanding their behavior. One of the algorithms has been implemented in the Clearinghouse servers of the Xerox Corporate Internet, solving long-standing problems of high traffic and database inconsistency},
+author = {Demers, Alan and Greene, Dan and Hauser, Carl and Irish, Wes and Larson, John},
+doi = {10.1145/41840.41841},
+isbn = {0897912394},
+issn = {01635980},
+journal = {Proceedings of the sixth annual ACM Symposium on Principles of distributed computing  - PODC '87},
+keywords = {Marina References},
+mendeley-tags = {Marina References},
+pages = {1--12},
+title = {{Epidemic algorithms for replicated database maintenance}},
+url = {http://portal.acm.org/citation.cfm?doid=41840.41841},
+year = {1987}
+}
+
+@article{Muruganathan2005-bdccp-centralized-clustering,
+abstract = {Wireless sensor networks consist of small battery powered devices with limited energy resources. Once deployed, the small sensor nodes are usually inaccessible to the user, and thus replacement of the energy source is not feasible. Hence, energy efficiency is a key design issue that needs to be enhanced in order to improve the life span of the network. Several network layer protocols have been proposed to improve the effective lifetime of a network with a limited energy supply. In this article we propose a centralized routing protocol called Base-Station Controlled Dynamic Clustering Protocol (BCDCP), which distributes the energy dissipation evenly among all sensor nodes to improve network lifetime and average energy savings. The performance of BCDCP is then compared to clustering-based schemes such as Low- Energy Adaptive Clustering Hierarchy (LEACH), LEACH- centralized (LEACH-C), and Power-Efficient Gathering in Sensor Information Systems (PEGASIS). Simulation results show that BCDCP reduces overall energy consumption and improves network lifetime over its comparatives. Introduction},
+author = {Muruganathan, Siva D and {Ma C.F}, Daniel and Rolly, I and Bhasin and Fapojuwo, Abraham O},
+doi = {10.1109/MCOM.2005.1404592},
+isbn = {0163-6804},
+issn = {01636804},
+journal = {IEEE Radio Communicatins},
+number = {March},
+pages = {8--13},
+title = {{A Centralized Energy-Efficient Routing Protocol for Wireless Sensor Networks}},
+year = {2005}
+}
+
+@article{Hopkinson2009-acg-subgroup-multicast,
+abstract = {Gossip-based communication protocols are attractive in cases where absolute delivery guarantees are not required due to their scalability, low overhead, and probabilistically high reliability. In earlier work, a gossip-based protocol known as gravitational gossip was created that allows the selection of quality ratings within subgroups based on workload and information update frequency. This paper presents an improved protocol that adds an adaptive component that matches the actual subgroup communication rates with desired rates coping with network variations by modifying underlying gossip weights. The protocol is designed for use in environments where many information streams are being generated and interest levels vary between nodes in the system. The gossip-based protocol is able to allow subscribers to reduce their expected workload in return for a reduced information rate. The protocol is a good fit for applications such as military information systems, sensor networks, and rescue operations. Experiments were conducted in order to compare the merits of different adaptation mechanisms. Experimental results show promise for this approach.},
+author = {Hopkinson, Kenneth and Jenkins, Kate and Birman, Kenneth and Thorp, James and Toussaint, Gregory and Parashar, Manu},
+doi = {10.1109/TPDS.2009.23},
+issn = {10459219},
+journal = {IEEE Transactions on Parallel and Distributed Systems},
+keywords = {Adaptive communication,Epidemic protocols,Gossiping,Publish/subscribe systems.},
+mendeley-tags = {Gossiping},
+number = {12},
+pages = {1830--1843},
+title = {{Adaptive gravitational gossip: A gossip-based communication protocol with user-selectable rates}},
+volume = {20},
+year = {2009}
+}
+
+
+@article{Eugster2004-epidemic-information-dissemination-in-distributed-systems,
+abstract = {Easy to deploy, robust, and highly resilient to failures, epidemic algorithms are a potentially effective mechanism for propagating information in large peer-to-peer systems deployed on Internet or ad hoc networks. It is possible to adjust the parameters of epidemic algorithm to achieve high reliability despite process crashes and disconnections, packet losses, and a dynamic network topology. Although researchers have used epidemic algorithms in applications such as failure detection, data aggregation, resource discovery and monitoring, and database replication, their general applicability to practical, Internet-wide systems remains open to question. We describe four key problems: membership maintenance, network awareness, buffer management, and message filtering, and suggest some preliminary approaches to address them.},
+author = {Eugster, P T and Guerraoui, R and Kermarrec, A M and Massoulie, L},
+doi = {10.1109/MC.2004.1297243},
+file = {:Users/tejp/Downloads/eugster{\_}ieeecomputer{\_}2004.pdf:pdf},
+isbn = {0018-9162},
+issn = {0018-9162},
+journal = {Computer},
+keywords = {Gossiping,Internet,Marina References,ad hoc networks,distributed algorithms,distributed systems,epidemic algorithms,information dissemination,peer-to-peer computing},
+mendeley-tags = {Gossiping,Marina References},
+number = {5},
+pages = {60--67},
+title = {{Epidemic information dissemination in distributed systems}},
+volume = {37},
+year = {2004}
+}
+@article{Karp2000-randomized-rumour-spreading,
+abstract = {Investigates the class of epidemic algorithms that are commonly used for the lazy transmission of updates to distributed copies of a database. These algorithms use a simple randomized communication mechanism to ensure robustness. Suppose n players communicate in parallel rounds in each of which every player calls a randomly selected communication partner. In every round, players can generate rumors (updates) that are to be distributed among all players. Whenever communication is established between two players, each one must decide which of the rumors to transmit. The major problem is that players might not know which rumors their partners have already received. For example, a standard algorithm forwarding each rumor form the calling to the called players for $\Theta$(ln n) rounds needs to transmit the rumor $\Theta$(n ln n) times in order to ensure that every player finally receives the rumor with high probability. We investigate whether such a large communication overhead is inherent to epidemic algorithms. On the positive side, we show that the communication overhead can be reduced significantly. We give an algorithm using only O(n ln ln n) transmissions and O(ln n) rounds. In addition, we prove the robustness of this algorithm. On the negative side, we show that any address-oblivious algorithm needs to send $\Omega$(n ln ln n) messages for each rumor, regardless of the number of rounds. Furthermore, we give a general lower bound showing that time and communication optimality cannot be achieved simultaneously using random phone calls, i.e. every algorithm that distributes a rumor in O(ln n) rounds needs $\omega$(n) transmissions},
+doi = {10.1109/SFCS.2000.892324},
+author={R. Karp and C. Schindelhauer and S. Shenker and B. Vocking}, 
+isbn = {0-7695-0850-2},
+issn = {0272-5428},
+journal = {Proceedings 41st Annual Symposium on Foundations of Computer Science},
+keywords = {Computer crashes,Computer science,Distributed databases,Marina References,Robustness,address-oblivious algorithm,commmunication complexity,communication complexity,communication optimality,communication overhead,database theory,distributed database copies,epidemic algorithms,information theory,lazy update transmission,lower bound,message transmissions,parallel rounds,random telephone calls,randomised algorithms,randomized communication mechanism,randomized rumor spreading,randomly selected communication partner,replicated databases,robustness,time optimality},
+mendeley-tags = {Marina References},
+pages = {565--574},
+pmid = {21445445},
+title = {{Randomized rumor spreading}},
+url = {http://ieeexplore.ieee.org/lpdocs/epic03/wrapper.htm?arnumber=892324},
+year = {2000}
+}
+
+@article{Liestman1984-gossiping-conference-calls,
+abstract = {n people have distinct bits of information which they can communicate by k-person conference calls. The object of gossip is to inform everyone of everyone else's information. Which networks admit a minimum call gossip scheme? For k = 2 a necessary and sufficient condition for such a network is that it is connected and contains a cycle of length 4. We address the same question for k{\textgreater}2. The values of n are partitioned into 2 classes: trivial and nontrivial. A necessary and sufficient condition is given for networks of size n for trivial n. For nontrivial n a sufficient condition is given and its necessity is conjectured. {\textcopyright} 1984.},
+author = {Liestman, Arthur L. and Richards, Dana},
+doi = {10.1016/0166-218X(84)90065-9},
+file = {:Users/mattias/Library/Application Support/Mendeley Desktop/Downloaded/Liestman, Richards - 1984 - Toward optimal gossiping schemes with conference calls.pdf:pdf},
+issn = {0166218X},
+journal = {Discrete Applied Mathematics},
+keywords = {Gossiping,multicast},
+mendeley-tags = {Gossiping,multicast},
+number = {2},
+pages = {183--189},
+title = {{Toward optimal gossiping schemes with conference calls}},
+volume = {7},
+year = {1984}
+}
